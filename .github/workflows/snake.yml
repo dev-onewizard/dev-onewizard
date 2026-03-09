@@ -21,8 +21,8 @@ jobs:
         with:
           github_user_name: dev-onewizard
           outputs: |
-            dist/github-contribution-grid-snake.svg
-            dist/github-contribution-grid-snake-dark.svg?palette=github-dark
+            dist/github-contribution-grid-snake.svg?color_snake=#6A8DAB&color_dots=#0d1117,#1E2A3A,#2D3B4F,#3E4F66,#5A6F8C&width=1000
+            dist/github-contribution-grid-snake-dark.svg?palette=github-dark&color_snake=#6A8DAB&color_dots=#0d1117,#1E2A3A,#2D3B4F,#3E4F66,#5A6F8C&width=1000
 
       - name: Deploy to branch
         uses: peaceiris/actions-gh-pages@v3
