@@ -58,10 +58,6 @@ const wizard = {
 </p>
 
 <p align="center">
-  <img src="https://programming-quotes-api.azurewebsites.net/api/quotes/random" width="80%" />
-</p>
-
-<p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/dev-onewizard/dev-onewizard/output/github-contribution-grid-snake-dark.svg" />
     <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/dev-onewizard/dev-onewizard/output/github-contribution-grid-snake.svg" />
@@ -69,14 +65,6 @@ const wizard = {
   </picture>
 </p>
 
-<p align="center">
-  <sub>✦ TG · ✦ VK · ✦ GH ✦</sub>
-</p>
-
 <div align="center">
   <img src="https://komarev.com/ghpvc/?username=dev-onewizard&style=for-the-badge&color=6A8DAB&label=ПРОСМОТРОВ+ПРОФИЛЯ" />
-</div>
-
-<div align="center">
-  <i>✦ Тихо · Спокойно · С душой ✦</i>
 </div>
