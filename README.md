@@ -69,6 +69,14 @@ const wizard = {
 
 ---
 
+### 💭
+
+<p align="center">
+  <img src="https://quotes-github-readme.vercel.app/api?type=horizontal&theme=tokyonight" width="80%" />
+</p>
+
+---
+
 ### 🐍
 
 <p align="center">
@@ -77,6 +85,13 @@ const wizard = {
     <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/dev-onewizard/dev-onewizard/output/github-contribution-grid-snake.svg" />
     <img alt="github-snake" src="https://raw.githubusercontent.com/dev-onewizard/dev-onewizard/output/github-contribution-grid-snake.svg" />
   </picture>
+</p>
+
+---
+
+
+<p align="center">
+  <sub>✦ TG · ✦ VK · ✦ GH ✦</sub>
 </p>
 
 ---
