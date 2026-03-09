@@ -4,15 +4,11 @@
   ✦ Пишу код с душой ✦ Автоматизирую рутину ✦ Учусь новому ✦
 </h3>
 
----
-
 <p align="center">
   <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=400&size=17&duration=2800&pause=600&color=6A8DAB&center=true&vCenter=true&width=500&lines=%2F%2F+%D0%B4%D0%B5%D0%BB%D0%B0%D1%8E+%D0%B8%D0%BD%D1%81%D1%82%D1%80%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D1%8B+%D0%B4%D0%BB%D1%8F+%D1%80%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D1%87%D0%B8%D0%BA%D0%BE%D0%B2;%2F%2F+%D0%BB%D1%8E%D0%B1%D0%BB%D1%8E+%D1%87%D0%B8%D1%81%D1%82%D1%8B%D0%B9+%D0%BA%D0%BE%D0%B4+%D0%B8+%D1%82%D0%B8%D1%88%D0%B8%D0%BD%D1%83;%2F%2F+%D0%B6%D0%B8%D0%B2%D1%83+%D1%82%D0%B0%D0%BC%2C+%D0%B3%D0%B4%D0%B5+%D1%83%D0%B4%D0%BE%D0%B1%D0%BD%D0%BE+%D0%BF%D0%B8%D1%81%D0%B0%D1%82%D1%8C+%D0%BA%D0%BE%D0%B4" alt="Typing SVG" />
 </p>
 
----
-
-### ✨ Коротко:
+###  Коротко:
 
 ```javascript
 const wizard = {
@@ -22,9 +18,7 @@ const wizard = {
 };
 ```
 
----
-
-### 🧰 Стек и инструменты:
+###  Стек и инструменты:
 
 <p align="left">
   <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg" height="42" alt="JavaScript" title="JavaScript" />
@@ -46,9 +40,7 @@ const wizard = {
   <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/npm/npm-original-wordmark.svg" height="42" alt="npm" title="npm" />
 </p>
 
----
-
-### 📊 Статистика:
+###  Статистика:
 
 <p align="center">
   <img src="https://github-readme-stats.vercel.app/api?username=dev-onewizard&show_icons=true&count_private=true&hide_border=true&theme=tokyonight&bg_color=0d1117&locale=ru" width="48%" />
@@ -59,25 +51,15 @@ const wizard = {
   <img src="https://github-readme-streak-stats.herokuapp.com/?user=dev-onewizard&hide_border=true&theme=tokyonight&background=0d1117&locale=ru" width="90%" />
 </p>
 
----
-
-### 📈 Динамика активности
+###  Динамика активности
 
 <p align="center">
   <img src="https://github-readme-activity-graph.vercel.app/graph?username=dev-onewizard&theme=tokyo-night&area=true&hide_border=true&custom_title=Моя%20активность%20по%20дням&bg_color=0d1117&color=6A8DAB&line=6A8DAB&point=6A8DAB" width="100%" />
 </p>
 
----
-
-### 💭
-
 <p align="center">
-  <img src="https://quotes-github-readme.vercel.app/api?type=horizontal&theme=tokyonight" width="80%" />
+  <img src="https://programming-quotes-api.azurewebsites.net/api/quotes/random" width="80%" />
 </p>
-
----
-
-### 🐍
 
 <p align="center">
   <picture>
@@ -87,14 +69,9 @@ const wizard = {
   </picture>
 </p>
 
----
-
-
 <p align="center">
   <sub>✦ TG · ✦ VK · ✦ GH ✦</sub>
 </p>
-
----
 
 <div align="center">
   <img src="https://komarev.com/ghpvc/?username=dev-onewizard&style=for-the-badge&color=6A8DAB&label=ПРОСМОТРОВ+ПРОФИЛЯ" />
