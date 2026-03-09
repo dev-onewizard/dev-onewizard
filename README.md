@@ -64,7 +64,3 @@ const wizard = {
   <br />
   <sub>✦ мои эмбиенты для тишины ✦</sub>
 </p>
-
-<div align="center">
-  <img src="https://komarev.com/ghpvc/?username=dev-onewizard&style=for-the-badge&color=6A8DAB&label=ПРОСМОТРОВ+ПРОФИЛЯ" />
-</div>
