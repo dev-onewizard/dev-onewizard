@@ -56,11 +56,3 @@ const wizard = {
 <p align="center">
   <img src="https://github-readme-activity-graph.vercel.app/graph?username=dev-onewizard&theme=tokyo-night&area=true&hide_border=true&custom_title=Моя%20активность%20по%20дням&bg_color=0d1117&color=6A8DAB&line=6A8DAB&point=6A8DAB" width="100%" />
 </p>
-
-### 🎵
-
-<p align="center">
-  <iframe frameborder="0" allow="clipboard-write" style="border-radius:12px; border:none; width:100%; max-width:500px; height:152px;" width="100%" height="152" src="https://music.yandex.ru/iframe/playlist/onedeswizard/1000"></iframe>
-  <br />
-  <sub>✦ мои эмбиенты для тишины ✦</sub>
-</p>
