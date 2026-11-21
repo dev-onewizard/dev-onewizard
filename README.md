@@ -1,11 +1,40 @@
-<h1 align="center">🧙‍♂️ DevWizard</h1>
+<div align="center">
 
-<p align="center">
-  Делаю инструменты для разработчиков и веб-проекты.<br />
-  Ценю чистый код, удобные интерфейсы и спокойный рабочий ритм.
-</p>
+# 🧙‍♂️ DevWizard
 
-<p align="center">
+### Инструменты для разработчиков · Веб-проекты · Чистый код
+
+Создаю полезные вещи и уделяю внимание тому, как ими пользоваться.
+
+<br />
+
+<img src="https://img.shields.io/badge/JavaScript-0d1117?style=for-the-badge&logo=javascript&logoColor=F7DF1E" alt="JavaScript" />
+<img src="https://img.shields.io/badge/Node.js-0d1117?style=for-the-badge&logo=node.js&logoColor=339933" alt="Node.js" />
+<img src="https://img.shields.io/badge/HTML5-0d1117?style=for-the-badge&logo=html5&logoColor=E34F26" alt="HTML5" />
+<img src="https://img.shields.io/badge/CSS3-0d1117?style=for-the-badge&logo=css3&logoColor=1572B6" alt="CSS3" />
+<img src="https://img.shields.io/badge/Tailwind_CSS-0d1117?style=for-the-badge&logo=tailwindcss&logoColor=06B6D4" alt="Tailwind CSS" />
+
+</div>
+
+---
+
+## 🧩 Мой подход
+
+- Делаю инструменты, которые решают понятные задачи.
+- Собираю веб-интерфейсы с вниманием к деталям.
+- Предпочитаю чистый код, простые решения и спокойный темп.
+
+## 🛠️ Инструменты
+
+<div align="center">
+  <img src="https://img.shields.io/badge/Git-0d1117?style=flat-square&logo=git&logoColor=F05032" alt="Git" />
+  <img src="https://img.shields.io/badge/VS_Code-0d1117?style=flat-square&logo=visualstudiocode&logoColor=007ACC" alt="Visual Studio Code" />
+  <img src="https://img.shields.io/badge/npm-0d1117?style=flat-square&logo=npm&logoColor=CB3837" alt="npm" />
+</div>
+
+## 🐍 Вклад в GitHub
+
+<div align="center">
   <picture>
     <source
       media="(prefers-color-scheme: dark)"
@@ -17,36 +46,18 @@
     />
     <img
       src="https://raw.githubusercontent.com/dev-onewizard/dev-onewizard/output/github-contribution-grid-snake.svg"
-      alt="Анимация активности в GitHub"
+      alt="Анимация вклада в GitHub"
       width="900"
     />
   </picture>
-</p>
+</div>
 
-## Стек
+## 📈 Активность
 
-<p>
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg" height="38" alt="JavaScript" title="JavaScript" />
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg" height="38" alt="Node.js" title="Node.js" />
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/html5/html5-original.svg" height="38" alt="HTML5" title="HTML5" />
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/css3/css3-original.svg" height="38" alt="CSS3" title="CSS3" />
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tailwindcss/tailwindcss-original.svg" height="38" alt="Tailwind CSS" title="Tailwind CSS" />
-</p>
-
-## Инструменты
-
-<p>
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/git/git-original.svg" height="34" alt="Git" title="Git" />
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vscode/vscode-original.svg" height="34" alt="Visual Studio Code" title="Visual Studio Code" />
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/npm/npm-original-wordmark.svg" height="34" alt="npm" title="npm" />
-</p>
-
-## Активность
-
-<p align="center">
+<div align="center">
   <img
-    src="https://github-readme-activity-graph.vercel.app/graph?username=dev-onewizard&theme=tokyo-night&area=true&hide_border=true&custom_title=Моя%20активность%20по%20дням&bg_color=0d1117&color=6A8DAB&line=6A8DAB&point=6A8DAB"
+    src="https://github-readme-activity-graph.vercel.app/graph?username=dev-onewizard&theme=tokyo-night&area=true&hide_border=true&custom_title=Активность%20по%20дням&bg_color=0d1117&color=6A8DAB&line=6A8DAB&point=6A8DAB"
     alt="График активности GitHub по дням"
     width="100%"
   />
-</p>
+</div>
