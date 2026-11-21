@@ -1,0 +1,1037 @@
+// main.js
+const { app, BrowserWindow, globalShortcut, ipcMain, Menu, shell } = require('electron');
+const { autoUpdater } = require('electron-updater');
+const path = require('path');
+const fs = require('fs');
+const fetch = require('node-fetch');
+const Analytics = require('./src/js/analytics.js');
+
+// ========== НАСТРОЙКИ ДЛЯ MOS.HUB ==========
+const DATA_OWNER = 'alamantik';
+const DATA_REPO = 'majestic-laws-db';
+const DATA_BRANCH = 'main';
+const BASE_URL = `https://raw.githubusercontent.com/${DATA_OWNER}/${DATA_REPO}/${DATA_BRANCH}`;
+const REPO_STRUCTURE_URL = `${BASE_URL}/repo_structure.json`;
+const SERVER_FILE_NAMES = {
+    'las-vegas-9': 'las vegas-9',
+    'los-angeles-7': 'los angeles-7',
+    'new-york-1': 'new york-1',
+    'san-diego-6': 'san diego-6',
+    'san-francisco-4': 'san francisco-4'
+};
+
+const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+let updateReady = false;
+let updaterStarted = false;
+
+let mainWindow = null;
+let searchWindow = null;
+let currentHotkey = 'Ctrl+Shift+K';
+let isEditingHotkey = false;
+let autoHideEnabled = true;
+let isQuitting = false;
+let lastSearchBounds = null;
+let inactivityTimer = null;
+const INACTIVITY_TIMEOUT = 20000; // 20 секунд бездействия
+
+const dataCache = {
+    laws: new Map(),
+    rules: new Map(),
+    structure: null
+};
+const CACHE_TTL = 10 * 60 * 1000;
+
+// ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+
+function getIconPath() {
+    const iconPath = path.join(__dirname, 'assets', 'Icon', 'icon.png');
+    return fs.existsSync(iconPath) ? iconPath : path.join(__dirname, 'assets', 'Icon', 'icon.png');
+}
+
+function getConfigPath() {
+    return path.join(app.getPath('userData'), 'config.json');
+}
+
+async function updateConfig(updater) {
+    const configPath = getConfigPath();
+    try {
+        const dir = path.dirname(configPath);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+
+        let config = {};
+        if (fs.existsSync(configPath)) {
+            const data = await fs.promises.readFile(configPath, 'utf-8');
+            config = JSON.parse(data);
+        }
+
+        const newConfig = updater(config);
+        await fs.promises.writeFile(configPath, JSON.stringify(newConfig, null, 2), 'utf-8');
+        return newConfig;
+    } catch (error) {
+        console.error('[Config] Failed to update:', error);
+        return null;
+    }
+}
+
+function readHotkey() {
+    try {
+        const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf-8'));
+        return config.toggleSearch || 'Ctrl+Shift+K';
+    } catch {
+        return 'Ctrl+Shift+K';
+    }
+}
+
+function writeHotkey(hotkey) {
+    return updateConfig((config) => {
+        config.toggleSearch = hotkey;
+        return config;
+    });
+}
+
+function readAutoHide() {
+    try {
+        const config = JSON.parse(fs.readFileSync(getConfigPath(), 'utf-8'));
+        return config.autoHideEnabled !== undefined ? config.autoHideEnabled : true;
+    } catch {
+        return true;
+    }
+}
+
+function writeAutoHide(enabled) {
+    return updateConfig((config) => {
+        config.autoHideEnabled = enabled;
+        return config;
+    });
+}
+
+// ========== УПРАВЛЕНИЕ ТАЙМЕРОМ БЕЗДЕЙСТВИЯ ==========
+
+function resetInactivityTimer() {
+    if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+        inactivityTimer = null;
+    }
+    
+    if (searchWindow && !searchWindow.isDestroyed() && searchWindow.isVisible() && autoHideEnabled) {
+        inactivityTimer = setTimeout(() => {
+            if (searchWindow && !searchWindow.isDestroyed() && searchWindow.isVisible() && autoHideEnabled) {
+                console.log('[Inactivity] Window closed after 20 seconds of inactivity');
+                searchWindow.webContents.send('window:set-css-opacity-zero');
+                setTimeout(() => {
+                    if (searchWindow && !searchWindow.isDestroyed()) searchWindow.hide();
+                }, 100);
+            }
+        }, INACTIVITY_TIMEOUT);
+    }
+}
+
+function clearInactivityTimer() {
+    if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+        inactivityTimer = null;
+    }
+}
+
+// ========== НОРМАЛИЗАЦИЯ ID СЕРВЕРОВ ==========
+
+function normalizeServerId(serverId) {
+    if (typeof serverId !== 'string') return '';
+    return serverId.toLowerCase().trim().replace(/\s+/g, '-');
+}
+
+// ========== ЗАГРУЗКА ДАННЫХ ==========
+
+async function fetchRepoStructure(ignoreCache = false) {
+    if (!ignoreCache && dataCache.structure && (Date.now() - dataCache.structureTimestamp) < CACHE_TTL) {
+        return dataCache.structure;
+    }
+    
+    try {
+        console.log('[API] Fetching repo structure from:', REPO_STRUCTURE_URL);
+        const response = await fetch(REPO_STRUCTURE_URL, { 
+            timeout: 5000
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const text = await response.text();
+        const cleanText = text.replace(/^\uFEFF/, '');
+        dataCache.structure = JSON.parse(cleanText);
+        dataCache.structureTimestamp = Date.now();
+        console.log('[API] Repo structure loaded successfully');
+        return dataCache.structure;
+        
+    } catch (error) {
+        console.error('[API] Error fetching structure:', error.message);
+        return null;
+    }
+}
+
+function parseServerFiles(structure) {
+    const files = structure?.laws?.files;
+    if (!Array.isArray(files)) return [];
+    return files
+        .filter(file => typeof file === 'string' && /^[a-z0-9]+(?:[ -][a-z0-9]+)*-\d+\.json$/i.test(file))
+        .map(file => ({ file, id: normalizeServerId(file.slice(0, -5)) }));
+}
+
+async function fetchServersList(forceRefresh = false) {
+    
+    try {
+        const structure = await fetchRepoStructure(forceRefresh);
+        const files = parseServerFiles(structure || dataCache.structure);
+        if (files.length) {
+            return files
+                .map(({ id }) => ({ id, name: formatServerName(id) }))
+                .sort((a, b) => {
+                    const numA = parseInt(a.id.split('-').pop()) || 0;
+                    const numB = parseInt(b.id.split('-').pop()) || 0;
+                    return numA - numB;
+                });
+        }
+        return getFallbackServers();
+        
+    } catch (error) {
+        console.error('[API] Error fetching servers list:', error);
+        return getFallbackServers();
+    }
+}
+
+function formatServerName(serverId) {
+    const names = {
+        'new-york': 'New York', 'detroit': 'Detroit', 'chicago': 'Chicago',
+        'san-francisco': 'San Francisco', 'atlanta': 'Atlanta', 'san-diego': 'San Diego',
+        'los-angeles': 'Los Angeles', 'miami': 'Miami', 'las-vegas': 'Las Vegas',
+        'washington': 'Washington', 'dallas': 'Dallas', 'boston': 'Boston',
+        'houston': 'Houston', 'seattle': 'Seattle', 'phoenix': 'Phoenix',
+        'denver': 'Denver', 'portland': 'Portland', 'orlando': 'Orlando',
+        'memphis': 'Memphis'
+    };
+    
+    const normalizedId = normalizeServerId(serverId);
+    const match = normalizedId.match(/(.+)-(\d+)$/);
+    
+    if (match) {
+        const baseName = names[match[1]] || match[1].split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
+        return `${baseName} ${match[2]}`;
+    }
+    
+    return names[normalizedId] || normalizedId.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
+}
+
+function getFallbackServers() {
+    return [
+        { id: 'new-york-1', name: 'New York 1' },
+        { id: 'detroit-2', name: 'Detroit 2' },
+        { id: 'chicago-3', name: 'Chicago 3' },
+        { id: 'san-francisco-4', name: 'San Francisco 4' },
+        { id: 'atlanta-5', name: 'Atlanta 5' },
+        { id: 'san-diego-6', name: 'San Diego 6' },
+        { id: 'los-angeles-7', name: 'Los Angeles 7' },
+        { id: 'miami-8', name: 'Miami 8' },
+        { id: 'las-vegas-9', name: 'Las Vegas 9' },
+        { id: 'washington-10', name: 'Washington 10' },
+        { id: 'dallas-11', name: 'Dallas 11' },
+        { id: 'boston-12', name: 'Boston 12' },
+        { id: 'houston-13', name: 'Houston 13' },
+        { id: 'seattle-14', name: 'Seattle 14' },
+        { id: 'phoenix-15', name: 'Phoenix 15' },
+        { id: 'denver-16', name: 'Denver 16' },
+        { id: 'portland-17', name: 'Portland 17' },
+        { id: 'orlando-18', name: 'Orlando 18' },
+        { id: 'memphis-19', name: 'Memphis 19' }
+    ];
+}
+
+// ========== ИСПРАВЛЕННАЯ ФУНКЦИЯ ТРАНСФОРМАЦИИ ЗАКОНОВ ==========
+function transformLawsData(serverId, rawData) {
+    if (!rawData) {
+        console.warn(`[API] No data for ${serverId}`);
+        return null;
+    }
+    
+    console.log(`[API] Transforming data for ${serverId}, type:`, typeof rawData);
+    console.log(`[API] Raw data keys:`, Object.keys(rawData));
+    
+    const items = [];
+    const sourceUrls = {};
+    
+    if (rawData.items && Array.isArray(rawData.items)) {
+        console.log(`[API] Using rawData.items format (old format)`);
+        return {
+            server: serverId,
+            updatedAt: rawData.updatedAt || Date.now(),
+            sourceUrls: rawData.sourceUrls || {},
+            items: rawData.items
+        };
+    }
+    
+    let data = rawData;
+    if (rawData.data && typeof rawData.data === 'object') {
+        console.log(`[API] Using rawData.data format (sectioned format)`);
+        data = rawData.data;
+    }
+    
+    const sections = Object.keys(data).filter(key => 
+        typeof data[key] === 'object' && data[key] !== null && !Array.isArray(data[key])
+    );
+    console.log(`[API] Found sections:`, sections);
+    
+    for (const [section, sectionData] of Object.entries(data)) {
+        if (!sectionData || typeof sectionData !== 'object') {
+            console.log(`[API] Skipping section ${section} - invalid data`);
+            continue;
+        }
+        
+        console.log(`[API] Processing section ${section}:`, Object.keys(sectionData));
+        
+        if (sectionData.url) {
+            sourceUrls[section] = sectionData.url;
+        }
+        
+        const articles = sectionData.articles || [];
+        
+        if (!Array.isArray(articles)) {
+            console.warn(`[API] articles is not an array for section ${section}`);
+            continue;
+        }
+        
+        console.log(`[API] Found ${articles.length} articles in section ${section}`);
+        
+        articles.forEach((article, index) => {
+            if (!article) return;
+            
+            items.push({
+                id: `${serverId}-${section}-${article.code || index}`,
+                section: section,
+                code: article.code || '',
+                title: article.title || '',
+                text: article.text || article.description || '',
+                explanation: article.explanation || null,
+                note: article.note || null,
+                exception: article.exception || null,
+                jurisdiction: article.jurisdiction || null,
+                penalty: article.penalty || null,
+                wanted_stars: article.wanted_stars || article.wantedStars || null,
+                searchText: `${article.code || ''} ${article.title || ''} ${article.text || article.description || ''} ${article.explanation || ''} ${article.note || ''} ${article.exception || ''} ${article.penalty || ''}`.toLowerCase()
+            });
+        });
+    }
+    
+    console.log(`[API] Transformed ${items.length} items for ${serverId}`);
+    
+    return {
+        server: serverId,
+        updatedAt: rawData.updatedAt || Date.now(),
+        sourceUrls,
+        items
+    };
+}
+
+async function fetchServerJson(serverId, forceRefresh = false) {
+    const normalizedId = normalizeServerId(serverId);
+    if (!/^[a-z0-9-]+$/.test(normalizedId)) return null;
+    
+    const cached = dataCache.laws.get(normalizedId);
+    if (!forceRefresh && cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
+        console.log(`[API] Using cache for ${normalizedId}`);
+        return cached.data;
+    }
+    
+    try {
+        const structure = dataCache.structure || await fetchRepoStructure();
+        const fileName = parseServerFiles(structure).find(({ id }) => id === normalizedId)?.file
+            || `${SERVER_FILE_NAMES[normalizedId] || normalizedId}.json`;
+        const url = `${BASE_URL}/laws/${encodeURIComponent(fileName)}`;
+        console.log(`[API] Fetching laws for ${normalizedId} from ${url}`);
+        
+        const response = await fetch(url, { 
+            timeout: 10000
+        });
+        
+        if (response.status === 404) {
+            console.warn(`[API] Laws file for ${normalizedId} not found (404)`);
+            return null;
+        }
+        
+        if (!response.ok) {
+            console.warn(`[API] Server ${normalizedId} returned ${response.status}`);
+            return null;
+        }
+        
+        const text = await response.text();
+        console.log(`[API] Received ${text.length} bytes for ${normalizedId}`);
+        
+        const cleanText = text.replace(/^\uFEFF/, '');
+        let rawData;
+        
+        try {
+            rawData = JSON.parse(cleanText);
+        } catch (parseError) {
+            console.error(`[API] JSON parse error for ${normalizedId}:`, parseError.message);
+            return null;
+        }
+        
+        if (!rawData || typeof rawData !== 'object') {
+            console.warn(`[API] Invalid data format for ${normalizedId}`);
+            return null;
+        }
+        
+        const processedData = transformLawsData(normalizedId, rawData);
+        
+        if (processedData && processedData.items) {
+            dataCache.laws.set(normalizedId, { data: processedData, timestamp: Date.now() });
+            console.log(`[API] Loaded ${processedData.items.length} laws for ${normalizedId}`);
+            return processedData;
+        }
+        
+        console.warn(`[API] No laws found for ${normalizedId}`);
+        return null;
+        
+    } catch (error) {
+        console.error(`[API] Error fetching ${normalizedId}:`, error.message);
+        return null;
+    }
+}
+
+async function fetchRulesJson(filename, forceRefresh = false) {
+    const safeFilename = String(filename || '').toLowerCase();
+    if (!['general', 'events', 'organizations'].includes(safeFilename)) return null;
+    const cached = dataCache.rules.get(safeFilename);
+    if (!forceRefresh && cached && (Date.now() - cached.timestamp) < CACHE_TTL) return cached.data;
+    
+    try {
+        const url = `${BASE_URL}/rules/${safeFilename}.json`;
+        console.log(`[API] Fetching rules ${safeFilename} from ${url}`);
+        
+        const response = await fetch(url, { 
+            timeout: 5000
+        });
+        
+        if (response.status === 404) {
+            console.warn(`[API] Rules file ${safeFilename} not found (404)`);
+            return {};
+        }
+        
+        if (!response.ok) {
+            console.warn(`[API] Rules ${safeFilename} returned ${response.status}`);
+            return null;
+        }
+        
+        const text = await response.text();
+        const cleanText = text.replace(/^\uFEFF/, '');
+        const rawData = JSON.parse(cleanText);
+        
+        if (!rawData || typeof rawData !== 'object') {
+            console.warn(`[API] Invalid rules data format for ${filename}`);
+            return null;
+        }
+        
+        const processedData = transformRulesData(safeFilename, rawData);
+        
+        if (processedData && Object.keys(processedData).length > 0) {
+            dataCache.rules.set(safeFilename, { data: processedData, timestamp: Date.now() });
+            console.log(`[API] Loaded rules for ${safeFilename}`);
+            return processedData;
+        }
+        
+        console.warn(`[API] No rules found for ${safeFilename}`);
+        return {};
+        
+    } catch (error) {
+        console.error(`[API] Error fetching rules ${safeFilename}:`, error.message);
+        return null;
+    }
+}
+
+function transformRulesData(filename, rawData) {
+    if (!rawData?.data) return {};
+    
+    const rulesByCategory = {};
+    const categoryName = { 
+        general: 'Основные', 
+        events: 'События', 
+        organizations: 'Организации' 
+    }[filename] || filename;
+    
+    for (const [subcategory, sectionData] of Object.entries(rawData.data)) {
+        if (!sectionData || !Array.isArray(sectionData.articles)) continue;
+        
+        rulesByCategory[subcategory] = sectionData.articles.map((article, idx) => ({
+            id: `${filename}-${subcategory}-${article.code || idx}`,
+            code: article.code || '', 
+            title: article.title || '',
+            text: article.text || '',
+            exception: article.exception || null, 
+            explanation: article.explanation || null,
+            note: article.note || null, 
+            penalty: article.penalty || null,
+            category: categoryName, 
+            subcategory,
+            searchText: `${article.code || ''} ${article.title || ''} ${article.text || ''} ${article.note || ''} ${article.explanation || ''} ${article.exception || ''} ${article.penalty || ''}`.toLowerCase()
+        }));
+    }
+    
+    return rulesByCategory;
+}
+
+// ========== УПРАВЛЕНИЕ ОКНАМИ ==========
+
+async function createMainWindow() {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.focus();
+        return;
+    }
+    
+    mainWindow = new BrowserWindow({
+        width: 800,
+        height: 450,
+        resizable: false,
+        frame: false,
+        transparent: true,
+        roundedCorners: false,
+        backgroundColor: '#00000000',
+        icon: getIconPath(),
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.js'),
+            nodeIntegration: false,
+            contextIsolation: true,
+        },
+    });
+    
+    Menu.setApplicationMenu(null);
+    mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
+    
+    if (isDev && process.argv.includes('--devtools')) {
+        mainWindow.webContents.openDevTools({ mode: 'detach' });
+    }
+    
+    mainWindow.on('closed', () => {
+        if (searchWindow && !searchWindow.isDestroyed()) searchWindow.close();
+        mainWindow = null;
+    });
+    
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+        openHttpsLink(url);
+        return { action: 'deny' };
+    });
+    
+    if (!isDev) {
+        Analytics.trackAppStart();
+        setupAutoUpdater();
+    }
+    
+    currentHotkey = readHotkey();
+    registerToggleHotkey(currentHotkey);
+}
+
+function createSearchWindow() {
+    if (searchWindow && !searchWindow.isDestroyed()) {
+        searchWindow.show();
+        searchWindow.focus();
+        return;
+    }
+    
+    autoHideEnabled = readAutoHide();
+    
+    searchWindow = new BrowserWindow({
+        width: 900,
+        height: 600,
+        resizable: false,
+        frame: false,
+        transparent: true,
+        roundedCorners: false,
+        alwaysOnTop: true,
+        show: false,
+        backgroundColor: '#00000000',
+        icon: getIconPath(),
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.js'),
+            nodeIntegration: false,
+            contextIsolation: true,
+        },
+    });
+    
+    searchWindow.setAlwaysOnTop(true, 'screen-saver');
+    searchWindow.setVisibleOnAllWorkspaces(true);
+    searchWindow.loadFile(path.join(__dirname, 'src', 'search.html'));
+    
+    if (isDev) {
+        searchWindow.webContents.on('before-input-event', (event, input) => {
+            if (input.key.toLowerCase() === 'f12' || (input.control && input.key.toLowerCase() === 'i')) {
+                searchWindow.webContents.openDevTools({ mode: 'detach' });
+                event.preventDefault();
+            }
+        });
+    }
+    
+    searchWindow.on('closed', () => {
+        searchWindow = null;
+        lastSearchBounds = null;
+        clearInactivityTimer();
+    });
+    
+    // ИСПРАВЛЕННЫЙ ОБРАБОТЧИК BLUR
+    searchWindow.on('blur', () => {
+        // Проверяем, не является ли фокус на devtools
+        if (searchWindow && !searchWindow.isDestroyed() && 
+            !searchWindow.webContents.isDevToolsOpened() && 
+            autoHideEnabled && !isEditingHotkey) {
+            
+            console.log('[Search] Window lost focus, hiding...');
+            clearInactivityTimer();
+            
+            // Отправляем событие для плавного скрытия
+            searchWindow.webContents.send('window:set-css-opacity-zero');
+            
+            // Скрываем окно после небольшой задержки
+            setTimeout(() => {
+                if (searchWindow && !searchWindow.isDestroyed()) {
+                    searchWindow.hide();
+                    console.log('[Search] Window hidden');
+                }
+            }, 100);
+        }
+    });
+    
+    searchWindow.on('focus', () => {
+        if (searchWindow && !searchWindow.isDestroyed() && autoHideEnabled) {
+            resetInactivityTimer();
+        }
+    });
+    
+    searchWindow.once('ready-to-show', () => {
+        if (searchWindow) {
+            if (lastSearchBounds) searchWindow.setBounds(lastSearchBounds);
+            searchWindow.show();
+            searchWindow.focus();
+            if (autoHideEnabled) {
+                resetInactivityTimer();
+            }
+        }
+    });
+    
+    searchWindow.on('move', () => {
+        if (searchWindow && !searchWindow.isDestroyed()) {
+            const bounds = searchWindow.getBounds();
+            if (bounds.x > -10000 && bounds.y > -10000) lastSearchBounds = bounds;
+        }
+    });
+}
+
+function toggleSearchWindow() {
+    if (isEditingHotkey) return;
+    
+    if (!searchWindow || searchWindow.isDestroyed()) {
+        createSearchWindow();
+        Analytics.trackHotkeyUse();
+        // Отправляем сигнал для воспроизведения звука
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('play-sound', 'toggle');
+        }
+    } else {
+        if (searchWindow.isVisible()) {
+            clearInactivityTimer();
+            searchWindow.webContents.send('window:set-css-opacity-zero');
+            setTimeout(() => {
+                if (searchWindow && !searchWindow.isDestroyed()) searchWindow.hide();
+            }, 100);
+        } else {
+            searchWindow.show();
+            searchWindow.focus();
+            searchWindow.webContents.send('window:restore-css-opacity');
+            if (autoHideEnabled) {
+                resetInactivityTimer();
+            }
+            Analytics.trackHotkeyUse();
+            // Отправляем сигнал для воспроизведения звука
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('play-sound', 'toggle');
+            }
+        }
+    }
+}
+
+// ========== СИСТЕМА ГОРЯЧИХ КЛАВИШ ==========
+
+const keyCodeMap = {
+    'KeyA': 'A', 'KeyB': 'B', 'KeyC': 'C', 'KeyD': 'D', 'KeyE': 'E', 'KeyF': 'F',
+    'KeyG': 'G', 'KeyH': 'H', 'KeyI': 'I', 'KeyJ': 'J', 'KeyK': 'K', 'KeyL': 'L',
+    'KeyM': 'M', 'KeyN': 'N', 'KeyO': 'O', 'KeyP': 'P', 'KeyQ': 'Q', 'KeyR': 'R',
+    'KeyS': 'S', 'KeyT': 'T', 'KeyU': 'U', 'KeyV': 'V', 'KeyW': 'W', 'KeyX': 'X',
+    'KeyY': 'Y', 'KeyZ': 'Z',
+    'Digit0': '0', 'Digit1': '1', 'Digit2': '2', 'Digit3': '3', 'Digit4': '4',
+    'Digit5': '5', 'Digit6': '6', 'Digit7': '7', 'Digit8': '8', 'Digit9': '9',
+    'F1': 'F1', 'F2': 'F2', 'F3': 'F3', 'F4': 'F4', 'F5': 'F5',
+    'F6': 'F6', 'F7': 'F7', 'F8': 'F8', 'F9': 'F9', 'F10': 'F10',
+    'F11': 'F11', 'F12': 'F12', 'F13': 'F13', 'F14': 'F14', 'F15': 'F15',
+    'F16': 'F16', 'F17': 'F17', 'F18': 'F18', 'F19': 'F19', 'F20': 'F20',
+    'F21': 'F21', 'F22': 'F22', 'F23': 'F23', 'F24': 'F24',
+    'Space': 'Space',
+    'Escape': 'Escape',
+    'Enter': 'Enter',
+    'Tab': 'Tab',
+    'Delete': 'Delete',
+    'Insert': 'Insert',
+    'Home': 'Home',
+    'End': 'End',
+    'PageUp': 'PageUp',
+    'PageDown': 'PageDown',
+    'ArrowUp': 'Up',
+    'ArrowDown': 'Down',
+    'ArrowLeft': 'Left',
+    'ArrowRight': 'Right',
+    'Backspace': 'Backspace',
+    'CapsLock': 'CapsLock',
+    'NumLock': 'NumLock',
+    'ScrollLock': 'ScrollLock',
+    'Pause': 'Pause',
+    'PrintScreen': 'PrintScreen',
+    'Minus': '-',
+    'Equal': '=',
+    'BracketLeft': '[',
+    'BracketRight': ']',
+    'Backslash': '\\',
+    'Semicolon': ';',
+    'Quote': "'",
+    'Comma': ',',
+    'Period': '.',
+    'Slash': '/',
+    'Backquote': '`'
+};
+
+const reverseKeyCodeMap = {};
+Object.entries(keyCodeMap).forEach(([code, name]) => {
+    reverseKeyCodeMap[name] = code;
+});
+
+function validateHotkey(hotkey) {
+    if (!hotkey) return false;
+    
+    const parts = hotkey.split('+');
+    const keyName = parts[parts.length - 1];
+    
+    // Проверяем, что клавиша существует в нашей карте
+    if (!reverseKeyCodeMap[keyName]) {
+        console.log('[Hotkey] Invalid key name:', keyName);
+        return false;
+    }
+    
+    // Список зарезервированных системных комбинаций
+    const reservedCombos = [
+        'F12', 'Ctrl+I', 'Ctrl+Shift+I', 'Cmd+I', 'Cmd+Shift+I',
+        'Ctrl+Alt+Delete', 'Ctrl+Shift+Escape', 'Alt+Tab', 'Ctrl+Esc',
+        'Ctrl+Alt+Del', 'Ctrl+Shift+Esc'
+    ];
+    
+    // Проверяем только полное совпадение с зарезервированными комбинациями
+    if (reservedCombos.includes(hotkey)) {
+        console.log('[Hotkey] Reserved combination:', hotkey);
+        return false;
+    }
+    
+    // Разрешаем все одиночные клавиши
+    if (parts.length === 1) {
+        // Запрещаем только совсем опасные одиночные клавиши
+        const dangerousKeys = ['Escape', 'Enter', 'Tab', 'Space', 'Backspace'];
+        if (dangerousKeys.includes(keyName)) {
+            console.log('[Hotkey] Dangerous single key:', keyName);
+            return false;
+        }
+        return true;
+    }
+    
+    // Для комбинаций с модификаторами разрешаем любые клавиши
+    return true;
+}
+
+function registerToggleHotkey(accelerator) {
+    try {
+        if (!validateHotkey(accelerator)) {
+            console.log('[Hotkey] Invalid hotkey combination:', accelerator);
+            return false;
+        }
+        if (currentHotkey) {
+            try {
+                globalShortcut.unregister(currentHotkey);
+            } catch (e) {
+            }
+        }
+        
+        const success = globalShortcut.register(accelerator, toggleSearchWindow);
+        
+        if (success) {
+            console.log('[Hotkey] Registered:', accelerator);
+            currentHotkey = accelerator;
+            return true;
+        } else {
+            console.log('[Hotkey] Failed to register:', accelerator);
+            return false;
+        }
+    } catch (error) {
+        console.error('[Hotkey] Error:', error);
+        return false;
+    }
+}
+
+function setupAutoUpdater() {
+    if (updaterStarted || process.platform !== 'win32' || process.env.PORTABLE_EXECUTABLE_FILE) return;
+    updaterStarted = true;
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = false;
+    autoUpdater.allowPrerelease = false;
+    
+    autoUpdater.on('error', (err) => {
+        console.log('[AutoUpdater] Error:', err.message);
+        mainWindow?.webContents.send('update-error', err.message);
+    });
+    
+    autoUpdater.on('update-available', (info) => {
+        console.log('[AutoUpdater] Update available:', info.version);
+        mainWindow?.webContents.send('update-available', info.version);
+    });
+    
+    autoUpdater.on('download-progress', (progress) => {
+        mainWindow?.webContents.send('download-progress', {
+            percent: progress.percent,
+            transferred: progress.transferred,
+            total: progress.total,
+        });
+    });
+    
+    autoUpdater.on('update-downloaded', (info) => {
+        updateReady = true;
+        console.log('[AutoUpdater] Update downloaded:', info.version);
+        mainWindow?.webContents.send('update-downloaded', info.version);
+    });
+    
+    const checkForUpdates = () => {
+        if (!updateReady) autoUpdater.checkForUpdates().catch(() => {});
+    };
+    setTimeout(checkForUpdates, 3000);
+    setInterval(checkForUpdates, 60 * 60 * 1000).unref();
+}
+
+function openHttpsLink(url) {
+    if (typeof url !== 'string') return;
+    try {
+        const link = new URL(url);
+        if (link.protocol === 'https:') shell.openExternal(link.href).catch(console.error);
+    } catch {
+        // Ignore invalid URLs.
+    }
+}
+
+function setupIPCHandlers() {
+    ipcMain.on('updates:install', (event) => {
+        if (!updateReady || event.sender !== mainWindow?.webContents) return;
+        updateReady = false;
+        autoUpdater.quitAndInstall(false, true);
+    });
+    ipcMain.on('window:minimize', () => mainWindow?.minimize());
+    ipcMain.on('window:close', () => { isQuitting = true; app.quit(); });
+    ipcMain.on('window:hide-search', () => {
+        if (searchWindow && !searchWindow.isDestroyed()) {
+            clearInactivityTimer();
+            searchWindow.webContents.send('window:set-css-opacity-zero');
+            setTimeout(() => searchWindow?.hide(), 100);
+        }
+    });
+    ipcMain.on('window:toggle-search', toggleSearchWindow);
+    
+    // Новый обработчик для звука
+    ipcMain.on('play-sound', (event, type) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('play-sound', type);
+        }
+    });
+    
+    ipcMain.handle('cfg:getHotkey', async () => ({ toggleSearch: currentHotkey }));
+    ipcMain.handle('cfg:setHotkey', async (event, accelerator) => {
+        await writeHotkey(accelerator);
+        registerToggleHotkey(accelerator);
+        Analytics.trackSettingsChange('hotkey', accelerator);
+        return { ok: true };
+    });
+    ipcMain.handle('cfg:getAutoHide', () => autoHideEnabled);
+    ipcMain.handle('cfg:setAutoHide', (event, enabled) => {
+        autoHideEnabled = enabled;
+        writeAutoHide(enabled);
+        Analytics.trackSettingsChange('autoHide', enabled);
+        return true;
+    });
+    
+    ipcMain.handle('laws:listServers', (event, forceRefresh = false) => fetchServersList(forceRefresh));
+    ipcMain.handle('get-repo-structure', () => fetchRepoStructure());
+    ipcMain.handle('get-server-laws', (event, serverId, forceRefresh = false) => fetchServerJson(serverId, forceRefresh));
+    ipcMain.handle('get-rules-file', (event, filename, forceRefresh = false) => fetchRulesJson(filename, forceRefresh));
+    
+    ipcMain.handle('laws:checkUpdates', async (event, serverId, currentUpdatedAt) => {
+        const data = await fetchServerJson(serverId, true);
+        return { hasUpdate: Boolean(data?.updatedAt && data.updatedAt !== currentUpdatedAt) };
+    });
+    
+    ipcMain.handle('log', async (event, logs) => {
+        try {
+            if (!logs || !logs.length) return;
+            
+            const logDir = path.join(app.getPath('userData'), 'logs');
+            const logFile = path.join(logDir, `app-${new Date().toISOString().split('T')[0]}.log`);
+            
+            if (!fs.existsSync(logDir)) {
+                fs.mkdirSync(logDir, { recursive: true });
+            }
+            
+            const logStream = logs.join('\n') + '\n';
+            await fs.promises.appendFile(logFile, logStream, 'utf-8');
+            
+            try {
+                const files = fs.readdirSync(logDir)
+                    .filter(f => f.startsWith('app-') && f.endsWith('.log'))
+                    .sort()
+                    .reverse();
+                
+                if (files.length > 5) {
+                    files.slice(5).forEach(f => {
+                        const filePath = path.join(logDir, f);
+                        if (fs.existsSync(filePath)) {
+                            fs.unlinkSync(filePath);
+                        }
+                    });
+                }
+            } catch (rotationError) {
+                console.error('[Logger] Log rotation failed:', rotationError);
+            }
+            
+        } catch (error) {
+            console.error('[Logger] Failed to write logs:', error);
+        }
+    });
+    
+    ipcMain.handle('get-app-info', () => ({
+        version: app.getVersion(),
+        name: 'Codex Assistant',
+        author: 'onewizard-dev',
+        platform: process.platform
+    }));
+    
+    ipcMain.on('server:selected', (event, serverId) => {
+        const normalizedId = normalizeServerId(serverId);
+        console.log('[IPC] Server selected:', normalizedId);
+        Analytics.trackServerChange(normalizedId);
+        updateConfig((config) => ({ ...config, selectedServer: normalizedId }));
+        
+        if (mainWindow && !mainWindow.isDestroyed() && event.sender !== mainWindow.webContents) {
+            mainWindow.webContents.send('server:changed', normalizedId);
+        }
+        if (searchWindow && !searchWindow.isDestroyed() && event.sender !== searchWindow.webContents) {
+            searchWindow.webContents.send('server:changed', normalizedId);
+        }
+    });
+    
+    ipcMain.handle('server:getCurrent', () => {
+        try {
+            const configPath = getConfigPath();
+            if (fs.existsSync(configPath)) {
+                const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+                return config.selectedServer || 'new-york-1';
+            }
+        } catch (error) {
+            console.error('[Server] Failed to get current server:', error);
+        }
+        return 'new-york-1';
+    });
+    
+    ipcMain.on('analytics:search', (event, query, count) => Analytics.trackSearch(query, count));
+    ipcMain.on('analytics:copy', (event, type, section) => Analytics.trackCopy(type, section));
+    
+    ipcMain.on('hotkey:startEditing', () => {
+        isEditingHotkey = true;
+        if (currentHotkey) {
+            try {
+                globalShortcut.unregister(currentHotkey);
+            } catch (e) {
+            }
+        }
+    });
+    
+    ipcMain.on('hotkey:stopEditing', () => {
+        isEditingHotkey = false;
+        if (currentHotkey) {
+            try {
+                if (!globalShortcut.isRegistered(currentHotkey)) {
+                    globalShortcut.register(currentHotkey, toggleSearchWindow);
+                }
+            } catch (e) {
+                console.error('[Hotkey] Failed to restore:', e);
+            }
+        }
+    });
+    
+    ipcMain.on('hotkey:change', (event, newHotkey) => {
+        if (newHotkey !== currentHotkey) {
+            registerToggleHotkey(newHotkey);
+            writeHotkey(newHotkey);
+        }
+        isEditingHotkey = false;
+    });
+    
+    ipcMain.on('open-external', (event, url) => openHttpsLink(url));
+    
+    ipcMain.handle('utils:normalizeHotkeyFromKeyCode', (event, keyCode, modifiers) => {
+        const keyName = keyCodeMap[keyCode];
+        if (!keyName) return null;
+        
+        const parts = [];
+        if (modifiers.ctrl) parts.push('Ctrl');
+        if (modifiers.shift) parts.push('Shift');
+        if (modifiers.alt) parts.push('Alt');
+        if (modifiers.meta) parts.push('Cmd');
+        
+        parts.push(keyName);
+        return parts.join('+');
+    });
+    
+    ipcMain.on('search:user-activity', () => {
+        if (searchWindow && !searchWindow.isDestroyed() && searchWindow.isVisible() && autoHideEnabled) {
+            resetInactivityTimer();
+        }
+    });
+}
+
+app.whenReady().then(async () => {
+    console.log('[App] Ready, isDev:', isDev);
+    Menu.setApplicationMenu(null);
+    
+    currentHotkey = readHotkey();
+    autoHideEnabled = readAutoHide();
+    Analytics.startSession();
+    
+    setupIPCHandlers();
+    await createMainWindow();
+});
+
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('activate', () => {
+    if (mainWindow === null) createMainWindow();
+});
+
+app.on('will-quit', () => {
+    globalShortcut.unregisterAll();
+    clearInactivityTimer();
+});
+
+app.on('before-quit', () => {
+    isQuitting = true;
+    clearInactivityTimer();
+});
+
+process.on('exit', () => Analytics.trackAppExit());

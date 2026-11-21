@@ -1,0 +1,592 @@
+(function() {
+    'use strict';
+
+    const log = window.logger ? logger.child('CORE') : console;
+
+    const CONSTANTS = {
+        APP_VERSION: '1.0.5',
+        LAW_ABBR: { UK: 'УК', AK: 'АК', DK: 'ДК', PK: 'ПК', UAK: 'УАК' },
+        LAW_FULL: {
+            UK: 'Уголовного кодекса', 
+            AK: 'Административного кодекса',
+            DK: 'Дорожного кодекса', 
+            PK: 'Процессуального кодекса',
+            UAK: 'Уголовно-административного кодекса'
+        },
+        LAW_NAMES: {
+            all: 'Все', 
+            UK: 'Уголовный', 
+            AK: 'Административный',
+            DK: 'Дорожный', 
+            PK: 'Процессуальный', 
+            UAK: 'Уголовно-административный'
+        },
+        LAW_COLORS: { UK: '#cc3636', AK: '#ffaa00', DK: '#3498db', PK: '#9b59b6', UAK: '#e67e22' },
+        
+        RULE_ABBR: {
+            'main-rules': 'ОПП', 'game-zones': 'ПИЗ', 'faction-leaders': 'ПдЛФ',
+            'forum-rules': 'ПФ', 'cheat-check': 'ППСПО', 'admin-rules': 'ПиОА',
+            'airdrop': 'ВЗА', 'workshops-dealers': 'ПЗЦД', 'supply-hijack': 'ППП',
+            'fort-zancudo': 'ПНОтФЗ', 'cayo-perico': 'ПНОоКП', 'material-war': 'ВЗМ',
+            'family-general': 'ПСО', 'crime-general': 'ПКО', 'territory-war': 'ВЗТ',
+            'state-general': 'ПГО', 'game-terror': 'ППИЗТ', 'raids': 'ПР',
+            'robbery-kidnap': 'ПОиП', 'business-robbery': 'ПО бизнесов',
+            'bank-robbery': 'ПО банков', 'martial-law': 'ВП'
+        },
+        RULE_FULL: {
+            'main-rules': 'Основных правил', 'game-zones': 'Правил игровых зон',
+            'faction-leaders': 'Правил для лидеров', 'forum-rules': 'Правил форума',
+            'cheat-check': 'Правил проверки на читы', 'admin-rules': 'Правил админов',
+            'airdrop': 'Правил Airdrop', 'workshops-dealers': 'Правил цехов',
+            'supply-hijack': 'Правил перехвата', 'fort-zancudo': 'Правил Форта',
+            'cayo-perico': 'Правил Кайо-Перико', 'material-war': 'Правил войны за материалы',
+            'family-general': 'Правил семейных', 'crime-general': 'Правил криминальных',
+            'territory-war': 'Правил войны за территорию', 'state-general': 'Правил гос. организаций',
+            'game-terror': 'Правил захватов', 'raids': 'Правил рейдов',
+            'robbery-kidnap': 'Правил ограблений', 'business-robbery': 'Правил ограбления бизнесов',
+            'bank-robbery': 'Правил ограбления банков', 'martial-law': 'Правил военного положения'
+        },
+        SUBCAT_NAMES: {
+            'main-rules': 'Основные', 'game-zones': 'Игровые зоны',
+            'faction-leaders': 'Лидеры', 'forum-rules': 'Форум',
+            'cheat-check': 'Читы', 'admin-rules': 'Админы',
+            'airdrop': 'Airdrop', 'workshops-dealers': 'Цеха',
+            'supply-hijack': 'Перехват', 'fort-zancudo': 'Форт',
+            'cayo-perico': 'Кайо', 'material-war': 'Материалы',
+            'family-general': 'Семейные', 'crime-general': 'Криминал',
+            'territory-war': 'Территория', 'state-general': 'Гос.',
+            'game-terror': 'Захваты', 'raids': 'Рейды',
+            'robbery-kidnap': 'Похищения', 'business-robbery': 'Бизнесы',
+            'bank-robbery': 'Банки', 'martial-law': 'Военка'
+        },
+        
+        SERVER_ICONS: {
+            empty: '<svg width="16" height="16" viewBox="0 0 18 18"><circle cx="9" cy="9" r="8" fill="#576069"/></svg>',
+            'new-york': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M2.889.584c-.043.05-.108.223-.146.385-.041.178-.184.422-.365.621-.5.552-.526 1.044-.08 1.508.318.33.286.42-.15.42-.605 0-.648.05-.648.739 0 .648.058.738.474.738.156 0 .183.024.14.124-.172.394-.246.639-.247.826-.002.31.23.754.517.99.246.202.253.222.342 1.015.117 1.049.398 2.534.571 3.025.132.373.133.4.01.75-.175.496-.359 1.576-.357 2.094.004 1.298.599 2.406 1.582 2.945l.39.213-.05.64a7 7 0 0 1-.085.762c-.035.116.237.123 5.02.12l5.057-.002.859-1.199c.803-1.12.85-1.205.724-1.292-.074-.052-.687-.492-1.362-.978-1.403-1.01-1.221-.995-1.851-.155-.22.291-.416.53-.437.532-.022 0-.143-.202-.269-.451-.324-.639-1.07-1.386-1.666-1.671-.422-.202-.564-.23-1.351-.276-1.085-.061-1.637-.157-2.067-.358-.415-.194-1.025-.779-1.238-1.187-.26-.499-.569-.88-.9-1.11-.216-.151-.324-.285-.356-.441-.026-.124-.034-.237-.02-.251.016-.015.326.01.69.055.73.091.676.042.768.694.145 1.03 1.09 1.9 2.07 1.902 1.02.002 1.97-.96 2.076-2.105l.038-.409.95-.121c.524-.067.992-.154 1.042-.194.152-.12.109-.402-.072-.471-.09-.035-.62-.118-1.178-.186-.721-.088-1.037-.155-1.097-.233-.068-.09.019-.238.478-.816.749-.94.77-.982.583-1.163-.186-.18-.228-.16-1.195.564-.63.472-.745.533-.886.472-.177-.078-.178-.081-.346-1.317-.08-.583-.144-.834-.232-.897-.15-.11-.181-.11-.329 0-.085.063-.15.335-.234.967-.152 1.16-.153 1.162-.343 1.245-.145.063-.26.001-.954-.516-.79-.588-.953-.662-1.116-.503-.158.153-.09.295.494 1.04.59.751.621.81.515.973-.066.101-1.666.34-1.841.274-.16-.06-.484-2.422-.486-3.538 0-.354.002-.357.271-.422l.272-.065.021-.597c.026-.708-.027-.775-.614-.775-.326 0-.385-.02-.385-.13 0-.071.07-.19.156-.263s.219-.273.296-.441c.266-.577.002-1.223-.766-1.875C3.193.483 3.023.427 2.89.584"/></svg>',
+            'detroit': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M12.75 8.5v-3L9 8.5v-3l-3.75 3V4H1.5v12h15V5.5zm-6 5.25h-1.5V11.5h1.5zm3.75 0H9V11.5h1.5zm3.75 0h-1.5V11.5h1.5z"/></svg>',
+            'chicago': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M5.049.931 5.559.5l.51.431v1.725l.255-.216.382.216V.93L7.216.5l.51.431v2.264l.892.323v2.263l.764.108V8.26h2.677v1.294h2.039v6.36H15.5V18.5h-13V9.446l.765-.215V5.997l.764-.216V3.518l1.02-.323zM4.999 7h1v9H5zM11 11h-1v1h1zm-1 2h1v1h-1zm1 2h-1v1h1zm1-4h1v1h-1zm1 2h-1v1h1zm-1 2h1v1h-1zM8 7H7v9h1z"/></svg>',
+            'san-francisco': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M1.648 11.022H0l.02 1.989 1.628.025V15h1.647v-1.966h11.412V15h1.646v-1.966H18v-2.012h-1.647V4l-1.627.025-.024 1.451-.275.263c-2.628 2.51-6.287 2.98-9.275 1.188-.587-.352-1.175-.799-1.572-1.195l-.285-.285V4.002H1.648zm1.647 0h1.608v-3.08l-.41-.268a11 11 0 0 1-1.112-.848l-.086-.074zm11.022-3.939a9 9 0 0 1-.794.584l-.425.273v3.082h1.609v-2.13c0-1.17-.005-2.127-.01-2.125-.005.003-.176.145-.38.316m-8.571 2.6v1.339h1.608V8.871l-.086-.023c-.617-.165-1.218-.361-1.465-.477-.05-.023-.057.145-.057 1.312m6.242-1.23c-.172.076-.849.29-1.254.395l-.087.023v2.151h1.609V9.688c0-.733-.013-1.332-.029-1.33a2 2 0 0 0-.24.096m-3.791 2.569h1.608V8.986H8.197z"/></svg>',
+            'atlanta': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M14.334 16.1v-5h.593V9.3h-1.185c0-2.7-1.502-4.98-3.537-5.62V2.3h-.593V.5H8.427v1.8h-.593v1.38C5.8 4.32 4.278 6.58 4.278 9.3H3.093v1.8h.592v5H2.5v2.4h13v-2.4zm-7.389 0H5.167v-5h1.778zm2.964 0H8.13v-5h1.778zm2.944 0h-1.778v-5h1.778z"/></svg>',
+            'san-diego': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M16.65 19c-.875 0-1.751-.21-2.55-.628a5.49 5.49 0 0 1-5.1 0 5.49 5.49 0 0 1-5.1 0A5.5 5.5 0 0 1 1.35 19H.5v-1.674h.85c.884 0 1.768-.293 2.55-.838a4.39 4.39 0 0 0 5.1 0 4.39 4.39 0 0 0 5.1 0c.774.545 1.666.838 2.55.838h.85V19zm-3.4-18c-.935 0-1.7.753-1.7 1.674s.765 1.675 1.7 1.675 1.7-.754 1.7-1.675c0-.92-.765-1.674-1.7-1.674m-2.184 5.844L9.153 8.116l3.247 2.512v3.215c.45.318.875.653 1.266.98-.578.485-1.317.828-2.116.828-1.02 0-1.93-.552-2.55-1.256-.62.704-1.53 1.256-2.55 1.256-.28 0-.553-.042-.816-.117-2.423-1.641-4.284-3.466-4.284-4.672 0-.862.858-1.071 1.572-1.071.833 0 1.939.26 3.145.695l-.45-2.596a1.52 1.52 0 0 1 .663-1.498l1.827-1.214-1.7-.31-2.396 1.616-.961-1.382 2.975-2.009 4.717.862c.383.076.791.31 1.037.745l.749 1.298c.371.643.909 1.178 1.558 1.55.65.372 1.388.568 2.139.568v1.675a6.03 6.03 0 0 1-2.981-.792 5.9 5.9 0 0 1-2.178-2.155M7.555 9.037l.374 2.219A33 33 0 0 1 10.7 12.72v-1.256z"/></svg>',
+            'los-angeles': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M9 .5c-.395 0-.786.09-1.143.265a2.66 2.66 0 0 0-.92.742 2.75 2.75 0 0 0-.524 2.27 6 6 0 0 0-.98.578 2.6 2.6 0 0 0-1.02-.59 2.6 2.6 0 0 0-2.26.36 2.7 2.7 0 0 0-.797.877 2.74 2.74 0 0 0 .478 3.316c.289.276.634.483 1.01.606a6.5 6.5 0 0 0 0 1.152c-.376.122-.722.33-1.01.606a2.7 2.7 0 0 0-.655.991 2.75 2.75 0 0 0 .176 2.325c.198.35.47.65.796.878s.7.378 1.09.44.791.034 1.17-.082c.38-.116.728-.317 1.021-.589q.38.274.796.487l-.714 2.183a.92.92 0 0 0 .048.688.9.9 0 0 0 .511.45.87.87 0 0 0 .674-.048.9.9 0 0 0 .443-.52l.713-2.184c.726.132 1.47.132 2.195 0l.714 2.183a.9.9 0 0 0 .443.52.87.87 0 0 0 1.185-.401.91.91 0 0 0 .048-.688l-.715-2.183q.415-.213.795-.486a2.6 2.6 0 0 0 3.28.23c.327-.228.6-.528.797-.877a2.74 2.74 0 0 0-.479-3.316 2.64 2.64 0 0 0-1.01-.606 6.5 6.5 0 0 0 0-1.153c.377-.123.722-.33 1.01-.606.289-.277.512-.616.655-.992a2.75 2.75 0 0 0-.176-2.324 2.7 2.7 0 0 0-.797-.877 2.6 2.6 0 0 0-2.26-.359 2.6 2.6 0 0 0-1.02.589 6 6 0 0 0-.98-.577 2.75 2.75 0 0 0-.523-2.27 2.66 2.66 0 0 0-.92-.743A2.6 2.6 0 0 0 9.001.5m2.207 12.899a4.4 4.4 0 0 0 .525-.363c-.086-.6.029-1.211.327-1.736.297-.526.76-.934 1.313-1.158.06-.426.06-.858 0-1.285A2.65 2.65 0 0 1 12.058 7.7a2.73 2.73 0 0 1-.328-1.736 4.4 4.4 0 0 0-1.091-.644 2.606 2.606 0 0 1-3.279 0 4.4 4.4 0 0 0-1.091.644c.086.6-.03 1.211-.328 1.736a2.65 2.65 0 0 1-1.31 1.157c-.06.427-.06.86 0 1.286A2.66 2.66 0 0 1 5.943 11.3a2.74 2.74 0 0 1 .326 1.737q.25.199.525.362l1.369-4.183a.9.9 0 0 1 .321-.446.87.87 0 0 1 1.032 0c.15.11.263.266.322.446z"/></svg>',
+            'miami': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M17.988 3.766a.64.64 0 0 1-.374.46L13.1 6.184a5.74 5.74 0 0 1 3.484 2.657 5.64 5.64 0 0 1 .579 4.345.64.64 0 0 1-.723.465.65.65 0 0 1-.287-.122L9.644 8.594v8.266A.64.64 0 0 1 9 17.5a.644.644 0 0 1-.643-.64V8.594L1.848 13.53a.644.644 0 0 1-1.01-.343 5.63 5.63 0 0 1 .578-4.345 5.74 5.74 0 0 1 3.486-2.657L.386 4.226a.64.64 0 0 1-.36-.763.64.64 0 0 1 .151-.265A5.37 5.37 0 0 1 4.105 1.5a5.4 5.4 0 0 1 3.927 1.698c.386.405.71.863.964 1.36.255-.497.581-.955.969-1.36A5.37 5.37 0 0 1 13.892 1.5a5.4 5.4 0 0 1 3.927 1.698.64.64 0 0 1 .169.568"/></svg>',
+            'las-vegas': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M8.584 17.374a.75.75 0 0 0 .832 0l6.75-4.5a.75.75 0 0 0 .184-1.074l-6.75-9c-.283-.378-.917-.378-1.2 0l-6.75 9a.75.75 0 0 0 .184 1.074zm6.09-5.308L9 15.849V4.5z"/></svg>',
+            'washington': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M3 16h3.83l.689-13.525L9.042.5H9.1l1.523 1.975.3 5.828L13.3 4.287a.34.34 0 0 1 .21-.156 2.027 2.027 0 0 1 2.418 1.362l.045.156a1.35 1.35 0 0 0 1.533.907l.111-.023c.26-.035.46.235.352.474l-.018.034-1.55 2.616a.34.34 0 0 1-.21.156 2.027 2.027 0 0 1-2.417-1.363l-.046-.156a1.35 1.35 0 0 0-1.473-.917l-1.128 1.905a.34.34 0 0 1-.149.134L11.317 16H15v3H3z"/></svg>',
+            'dallas': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M11.704 11.26c-.11 3.032-2.885 5.393-2.885 5.393l-2.184-.865c-1.018-.407-1.398-1.055-1.858-2.05l-.002-.005 3.49 1.005-2.132-1.021c-1.535-.734-2.175-1.74-2.836-3.308l4.968 1.92-4.663-2.815C2.543 8.874 2.23 8.158 1.71 7.036l5.954 2.54-2.919-1.903C1.596 5.693 1.314 4.539.24 2.223L6.927 6.43c1.902 1.196 4.86 2.583 4.777 4.83m6.056-3.72c0 .255-.647.771-.752.763-.136-.012-1.71-1.03-2.288-1.319-.554-.276-2.194.047-2.371-1.581-.406 1.034.398 3.333 1.028 4.44 1.309 2.297-.95 5.415-3.76 6.871q.588-.595 1.082-1.271a9.3 9.3 0 0 0 1.053-1.83c.333-.783.517-1.567.544-2.332a3.16 3.16 0 0 0-.398-1.638c-.24-.443-.581-.865-1.045-1.29-.806-.743-1.847-1.364-2.767-1.912l-.043-.026c-.216-.406-.32-.785-.178-1.099.987-2.195 3.729-3.455 6.14-3.209.782-.941 1.547-.816 1.547-.816l-.44.936s.74-.413.854-.27l-.609 1.135.515.685s1.888 3.53 1.888 3.764m-2.726-3.69a.35.35 0 1 0-.7 0 .35.35 0 0 0 .7 0"/></svg>',
+            'boston': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M15.222 10.602q.864.533 1.778.973v-.928c-1.571-.82-4.883-2.898-7.111-6.75 0 0 0-.897-.889-.897s-.889.897-.889.897C5.883 7.749 2.571 9.827 1 10.647v.928q.915-.44 1.778-.973v1.364H1v1.793h7.111V16H9.89v-2.241H17v-1.793h-1.778zm-.889 1.364h-1.777V8.633q.849.745 1.777 1.387zM3.667 10.02q.928-.643 1.777-1.387v3.333H3.667zm2.666 1.946V7.8a17 17 0 0 0 1.778-2.087v6.253zM9.89 5.714q.806 1.115 1.778 2.087v4.165H9.889z"/></svg>',
+            'houston': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M13.257 4.315A4.64 4.64 0 0 0 9 1.5a4.64 4.64 0 0 0-4.257 2.815.934.934 0 0 0-.85.935v1.875c0 .492.374.894.85.935A4.64 4.64 0 0 0 9 10.875a4.64 4.64 0 0 0 4.257-2.815.934.934 0 0 0 .85-.935V5.25a.934.934 0 0 0-.85-.935M12.25 5.72v.468C12.25 7.74 11.002 9 9.464 9h-.928C6.998 9 5.75 7.74 5.75 6.188v-.47a1.4 1.4 0 0 1 1.393-1.405h3.714a1.4 1.4 0 0 1 1.393 1.406m-4.257.548-.174-.621a.22.22 0 0 0-.212-.162.22.22 0 0 0-.212.162l-.174.62-.615.176a.22.22 0 0 0-.16.214c0 .1.064.188.16.214l.615.176.174.621a.22.22 0 0 0 .212.161.22.22 0 0 0 .212-.161l.174-.621.615-.176a.22.22 0 0 0 .16-.214.22.22 0 0 0-.16-.214zM5.77 10.772A5.22 5.22 0 0 0 2.5 15.63c0 .48.386.87.862.87h2.852v-1.875c0-.518.415-.937.929-.937h3.714c.514 0 .929.418.929.937V16.5h2.852c.476 0 .862-.39.862-.87a5.22 5.22 0 0 0-3.27-4.858A5.52 5.52 0 0 1 9 11.812a5.52 5.52 0 0 1-3.23-1.04m1.837 3.853a.47.47 0 0 0-.464.469V16.5h.928v-1.406a.47.47 0 0 0-.464-.469m2.786.938a.471.471 0 0 0 0-.937.46.46 0 0 0-.328.136.471.471 0 0 0 .328.8"/></svg>',
+            'seattle': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M5.21 9.436C1.217 9.007 2.05 7.35 9.102 7.29c7.052.06 7.826 1.782 3.835 2.211-.93 1.651-1.383 5.583-1.383 8.11h-.94c.076-2.312.162-4.384.595-8.11h-1.142c-.395 2.36-.477 4.906-.314 8.11H8.65c.191-3.247.058-5.785-.397-8.11h-1.03c.434 3.738.607 5.8.683 8.11h-.922c-.103-3.61-.628-5.924-1.775-8.175M8.853.39s-.348 1.737-.385 1.847c-.016.032-.242.074-.547.09-.599.041-1.618.204-1.928.315l-.21.073.157.084c.205.105.379.295.416.457.089.368-.42.684-1.992 1.23-1.366.478-1.918.683-1.897.699.01.01.236-.016.51-.058 2.57-.627 9.274-.522 12.18.021.652.121.547.074-1.024-.478-1.267-.447-2.086-.788-2.286-.951-.168-.137-.263-.342-.226-.484.031-.126.252-.352.473-.483.09-.053.079-.068-.11-.12-.352-.1-1.388-.269-1.945-.306l-.525-.042L9.137.39z"/></svg>',
+            'phoenix': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M5.464 8.855c-.126-.051-.266-.073-.398-.104-2.391-.554-4.177-2.63-4.06-5.236.032-.723.285-2.016.815-2.515.008.123-.005.248.002.372.154 2.654 1.913 4.267 4.22 5.005.198.063.4.116.588.21.038 1.24 1.395 2.428 2.38 2.929 1.142-.59 2.18-1.57 2.385-2.93 1.226-.402 2.106-.655 3.125-1.609C15.64 3.93 16.155 2.534 16.227 1c.085.158.19.303.272.462.873 1.686.56 4.003-.591 5.465a4.9 4.9 0 0 1-3.37 1.875c-.1.168-.178.35-.278.518-.35.584-.683.81.357.692 1.407-.16 2.676-.87 3.746-1.802.137-.12.267-.267.422-.36l.017-.01c-.124.28-.21.578-.33.862-.923 2.21-2.761 3.562-5.097 3.77-.346.03-.687.02-1.034.018a4.43 4.43 0 0 1 1.668 2.103c.171.457.269 1.004.24 1.495-.23.265-.842.766-1.114.954.022-.207.078-.411.114-.616a2.815 2.815 0 0 0-1.62-3.099c.159.455.265 1.014.37 1.486.245 1.091.51 1.847-.462 2.721-.173.156-.366.294-.526.466-.37-.384-.769-.568-1.02-1.092-.33-.684-.14-1.322.015-2.025.115-.52.23-1.05.391-1.556-1.132.416-1.803 1.706-1.664 2.912.031.27.1.534.14.803-.25-.29-.8-.709-1.108-.954-.078-1.21.481-2.35 1.346-3.139.19-.173.403-.314.595-.483a7 7 0 0 1-.942.018c-2.628-.144-4.832-2.05-5.539-4.645C2.37 9.003 3.93 9.893 5.551 10.005c.208.015.424.077.525-.156-.113-.227-.462-.769-.612-.994"/></svg>',
+            'denver': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M10.782 2.173c-.082.097-.89 1.129-1.795 2.292C8.081 5.628 7.32 6.57 7.294 6.558a29 29 0 0 1-.822-.592c-.427-.315-.808-.572-.848-.572s-.1.039-.135.086C4.919 6.25 2.355 12.193 1 15h16c-.398-2.014-.943-6.477-.943-6.477s-.74-.334-1.318-.399c0 0-1.22-2.162-1.65-2.871-1.042-1.727-1.922-3.166-1.956-3.198-.102-.099-.196-.067-.351.118M7.887 7.486c-.073.086-.157-.071.349 2.72.282 1.56.519 2.83.525 2.822s.238-.894.515-1.97c.278-1.075.511-1.963.519-1.972.008-.01.049.005.092.034.412.27.964-.395 1.272-1.53.272-1.006.246-1.942-.076-2.724-.11-.266-.358-.652-.42-.652-.868 1.039-1.676 1.97-2.776 3.272m-3.6 2.72L2.914 13.09l.57-.013 1.289.013.096-.13c.313-.429.732-1.346.934-2.049.231-.803.295-1.293.296-2.26 0-.805-.233-1.656-.296-1.654-.013 0-.667 1.654-1.514 3.21"/></svg>',
+            'portland': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M0.0267341 0.295878C0.0845673 0.9361 0.370031 1.63604 0.773305 2.12637C1.18048 2.62147 1.89049 3.09038 2.41738 3.21213C2.52993 3.23812 2.62198 3.27346 2.62198 3.29066C2.62198 3.3358 2.02163 3.61647 1.6765 3.73267C1.25846 3.87338 0.869992 3.95026 0.420109 3.9813L0.0303975 4.00815L0.0197194 4.68238L0.0090802 5.3566H0.147934C0.399688 5.3566 1.03745 5.27456 1.41029 5.19416C2.42899 4.97462 3.44704 4.47323 4.25027 3.79549L4.53406 3.55601L4.85433 3.7231C5.39564 4.00545 5.80171 4.47108 5.93293 4.95981C5.9781 5.12811 5.97783 5.12885 5.80885 5.31095C5.71571 5.41128 5.61115 5.5344 5.5765 5.58455L5.51352 5.6757L5.24166 5.57736C4.50148 5.30958 3.69906 5.2825 2.94092 5.49973C2.82697 5.53237 2.72405 5.58439 2.7122 5.61539C2.67405 5.71513 3.0585 6.29626 3.38192 6.62767C3.80101 7.0571 4.32253 7.39816 4.78488 7.54512C5.00082 7.61376 5.03819 7.65226 5.03819 7.8059C5.03819 8.21395 5.31995 9.13258 5.65963 9.8319C5.94762 10.4248 6.52927 11.3062 6.8431 11.6253C7.52786 12.3215 8.47502 12.3243 9.15168 11.6321C9.46863 11.3079 10.0405 10.4416 10.3369 9.83655C10.6779 9.14044 10.9618 8.21782 10.9618 7.8059C10.9618 7.65226 10.9992 7.61376 11.2151 7.54512C11.6803 7.39726 12.2975 6.98948 12.6702 6.58381C12.9597 6.26874 13.321 5.70216 13.2878 5.61539C13.276 5.58439 13.173 5.53237 13.0591 5.49973C12.3009 5.2825 11.4985 5.30958 10.7583 5.57736L10.4865 5.6757L10.4235 5.58455C10.3889 5.5344 10.2843 5.41128 10.1912 5.31095C10.0222 5.12885 10.0219 5.12811 10.0671 4.95981C10.1985 4.47022 10.6086 3.99951 11.1457 3.72169L11.4659 3.55601L11.7497 3.79549C12.5496 4.47045 13.5752 4.97552 14.5897 5.19416C14.9625 5.27456 15.6003 5.3566 15.8521 5.3566H15.9909L15.9803 4.68238L15.9696 4.00815L15.5799 3.9813C15.1333 3.9505 14.7417 3.87346 14.3339 3.73619C13.9868 3.61929 13.378 3.33302 13.378 3.28663C13.378 3.26806 13.4451 3.24149 13.5269 3.22761C13.8889 3.16628 14.5114 2.82491 14.8995 2.47494C15.4818 1.94982 15.9006 1.09995 15.9733 0.295878L16 0L15.3223 0.0107095L14.6446 0.0214189L14.6215 0.236702C14.5756 0.66426 14.4003 1.04785 14.1099 1.35576C13.7218 1.76729 13.3273 1.95025 12.7417 1.99028L12.3586 2.01646L12.3797 1.91793C12.3913 1.86372 12.4453 1.62369 12.4998 1.38453C12.5935 0.973583 12.6918 0.0973231 12.6515 0.0320111C12.6413 0.0154388 12.3385 0.00187612 11.9786 0.00187612H11.3243L11.2983 0.382961C11.267 0.842373 11.1652 1.31933 11.0085 1.74119C10.7998 2.30304 10.7394 2.41099 10.6016 2.46794C10.3418 2.57539 9.79813 2.97707 9.53145 3.25864C9.24271 3.56351 8.98609 3.95703 8.86921 4.27413C8.81146 4.43082 8.78698 4.45818 8.72151 4.43922C8.44353 4.35875 7.9818 4.32869 7.67849 4.37133C7.50164 4.39615 7.32167 4.42672 7.27849 4.43922C7.21302 4.45818 7.18854 4.43082 7.13079 4.27413C7.01391 3.95703 6.75729 3.56351 6.46855 3.25864C6.20187 2.97707 5.65822 2.57539 5.39836 2.46794C5.26064 2.41099 5.20019 2.30304 4.99147 1.74119C4.83476 1.31933 4.73301 0.842373 4.70171 0.382961L4.67572 0.00187612H3.99934H3.32291L3.34443 0.285247C3.38223 0.78351 3.44326 1.18394 3.54049 1.57237C3.5926 1.78051 3.63523 1.96546 3.63523 1.98344C3.63523 2.04363 2.8834 1.96722 2.66949 1.88525C1.95577 1.61181 1.45779 0.975889 1.37849 0.236702L1.35542 0.0214189L0.677709 0.0107095L0 0L0.0267341 0.295878ZM4.30413 10.5097C4.07981 11.0326 3.97701 11.7338 4.02958 12.3817C4.11882 13.4811 4.70008 14.5336 5.58889 15.2053C5.99026 15.5086 6.51832 15.7657 7.009 15.8967C7.34813 15.9872 7.47058 16 8 16c.52981 0 .65195-.0127.99377-.1037 1.63763-.436 2.84213-1.8582 2.97663-3.5146.0536-.6596-.0765-1.4929-.3017-1.9331l-.0709-.1386-.2055.3863c-.452 1.0883-1.1077 1.9793-1.5503 2.3454-1.0905.9025-2.6168.8919-3.7159-.0255-.4147-.3462-1.0806-1.258-1.5156-2.0754-.1115-.2097-.2078-.3811-.214-.3811-.0061 0-.0477.0851-.0923.1892z"/></svg>'
+        }
+    };
+
+    const offlineCache = {
+        laws: {},
+        rules: {},
+        servers: null
+    };
+
+    // LRU-кэш: хранит не более maxSize записей, вытесняя самые старые
+    class LRUCache {
+        constructor(maxSize = 3) {
+            this.maxSize = maxSize;
+            this.cache = new Map();
+        }
+        
+        get(key) {
+            if (!this.cache.has(key)) return undefined;
+            // Переставляем в конец (самый свежий)
+            const value = this.cache.get(key);
+            this.cache.delete(key);
+            this.cache.set(key, value);
+            return value;
+        }
+        
+        set(key, value) {
+            if (this.cache.has(key)) this.cache.delete(key);
+            else if (this.cache.size >= this.maxSize) {
+                // Удаляем первый (самый старый) ключ
+                this.cache.delete(this.cache.keys().next().value);
+            }
+            this.cache.set(key, value);
+        }
+        
+        has(key) { return this.cache.has(key); }
+        
+        delete(key) { return this.cache.delete(key); }
+        
+        clear() { this.cache.clear(); }
+        
+        get size() { return this.cache.size; }
+    }
+
+    window.LRUCache = LRUCache;
+
+    const isStorageAvailable = (() => {
+        try {
+            const testKey = '__storage_test__';
+            localStorage.setItem(testKey, '1');
+            localStorage.removeItem(testKey);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    })();
+
+    try {
+        if (isStorageAvailable) {
+            const savedLaws = localStorage.getItem('offline_laws');
+            if (savedLaws) {
+                try {
+                    offlineCache.laws = JSON.parse(savedLaws);
+                } catch (e) {
+                    log.warn('Failed to parse offline_laws:', e);
+                }
+            }
+            
+            const savedRules = localStorage.getItem('offline_rules');
+            if (savedRules) {
+                try {
+                    offlineCache.rules = JSON.parse(savedRules);
+                } catch (e) {
+                    log.warn('Failed to parse offline_rules:', e);
+                }
+            }
+            
+            const savedServers = localStorage.getItem('offline_servers');
+            if (savedServers) {
+                try {
+                    offlineCache.servers = JSON.parse(savedServers);
+                } catch (e) {
+                    log.warn('Failed to parse offline_servers:', e);
+                }
+            }
+        }
+    } catch (e) {
+        log.warn('Failed to load offline cache:', e);
+    }
+
+    const Utils = {
+        escapeHtml(text) {
+            if (!text) return '';
+            try {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML.replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+            } catch (error) {
+                log.error('escapeHtml error:', error);
+                return String(text);
+            }
+        },
+        
+        highlightText(text, searchTerm) {
+            if (!text || !searchTerm) return this.escapeHtml(text);
+            try {
+                const escaped = this.escapeHtml(text);
+                const term = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                if (!term) return escaped;
+                return escaped.replace(new RegExp(`(${term})`, 'gi'), '<span class="search-highlight">$1</span>');
+            } catch (error) {
+                log.error('highlightText error:', error);
+                return this.escapeHtml(text);
+            }
+        },
+        
+        isTextLong(text, maxLength = 150) {
+            return text && text.length > maxLength;
+        },
+        
+        debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    try {
+                        func.apply(this, args);
+                    } catch (error) {
+                        log.error('debounced function error:', error);
+                    }
+                }, wait);
+            };
+        },
+        
+        throttle(func, limit) {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        },
+        
+        getServerIcon(serverId) {
+            if (!serverId) return CONSTANTS.SERVER_ICONS.empty;
+            
+            try {
+                let cleanId = serverId.toLowerCase().trim();
+                
+                const iconMap = {
+                    'new-york': 'new-york', 'newyork': 'new-york',
+                    'detroit': 'detroit',
+                    'chicago': 'chicago',
+                    'san-francisco': 'san-francisco', 'sanfrancisco': 'san-francisco',
+                    'atlanta': 'atlanta',
+                    'san-diego': 'san-diego', 'sandiego': 'san-diego',
+                    'los-angeles': 'los-angeles', 'losangeles': 'los-angeles',
+                    'miami': 'miami',
+                    'las-vegas': 'las-vegas', 'lasvegas': 'las-vegas',
+                    'washington': 'washington',
+                    'dallas': 'dallas',
+                    'boston': 'boston',
+                    'houston': 'houston',
+                    'seattle': 'seattle',
+                    'phoenix': 'phoenix',
+                    'denver': 'denver',
+                    'portland': 'portland'
+                };
+                
+                const baseMatch = cleanId.match(/^([a-z-]+?)(?:-\d+)?$/);
+                const baseName = baseMatch ? baseMatch[1] : cleanId.split('-')[0];
+                
+                for (const [key, value] of Object.entries(iconMap)) {
+                    if (baseName.includes(key) || key.includes(baseName)) {
+                        const icon = CONSTANTS.SERVER_ICONS[value];
+                        if (icon) {
+                            return icon.replace('<svg', `<svg class="${value}"`);
+                        }
+                    }
+                }
+                
+                return CONSTANTS.SERVER_ICONS.empty.replace('<svg', '<svg class="empty"');
+                
+            } catch (error) {
+                log.error('getServerIcon error:', error);
+                return CONSTANTS.SERVER_ICONS.empty;
+            }
+        },
+        
+        async copyToClipboard(text) {
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(text);
+                    return true;
+                }
+                
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                const success = document.execCommand('copy');
+                document.body.removeChild(textarea);
+                return success;
+                
+            } catch (error) {
+                log.error('copyToClipboard error:', error);
+                return false;
+            }
+        },
+        
+        toggleTextExpand(e) {
+            try {
+                e.stopPropagation();
+                const el = e.currentTarget;
+                
+                requestAnimationFrame(() => {
+                    if (el.classList.contains('collapsible')) {
+                        el.classList.remove('collapsible');
+                        el.classList.add('expanded');
+                    } else if (el.classList.contains('expanded')) {
+                        el.classList.remove('expanded');
+                        el.classList.add('collapsible');
+                    }
+                });
+            } catch (error) {
+                log.error('toggleTextExpand error:', error);
+            }
+        },
+        
+        setupCollapsible(items) {
+            if (!items || items.length === 0) return;
+            
+            requestAnimationFrame(() => {
+                items.forEach(item => {
+                    if (!item) return;
+                    
+                    const fields = ['text', 'note', 'explanation', 'exception'];
+                    
+                    fields.forEach(field => {
+                        try {
+                            if (item[field] && this.isTextLong(item[field])) {
+                                const id = field === 'text' ? `text-${item.id}` : `${field}-${item.id}`;
+                                const cleanId = id.replace(/[^a-zA-Z0-9-]/g, '-');
+                                const el = document.getElementById(cleanId);
+                                
+                                if (el) {
+                                    el.classList.remove('collapsible', 'expanded');
+                                    el.removeEventListener('click', this.toggleTextExpand);
+                                    
+                                    el.classList.add('collapsible');
+                                    el.addEventListener('click', this.toggleTextExpand, { passive: true });
+                                }
+                            }
+                        } catch (error) {
+                            log.error('setupCollapsible item error:', error);
+                        }
+                    });
+                });
+            });
+        },
+        
+        saveToOfflineCache(type, key, data) {
+            try {
+                if (!isStorageAvailable) return;
+                
+                if (type === 'laws') {
+                    offlineCache.laws[key] = data;
+                    localStorage.setItem('offline_laws', JSON.stringify(offlineCache.laws));
+                } else if (type === 'rules') {
+                    offlineCache.rules[key] = data;
+                    localStorage.setItem('offline_rules', JSON.stringify(offlineCache.rules));
+                } else if (type === 'servers') {
+                    offlineCache.servers = data;
+                    localStorage.setItem('offline_servers', JSON.stringify(data));
+                }
+            } catch (e) {
+                log.warn('Failed to save to offline cache:', e);
+            }
+        },
+        
+        loadFromOfflineCache(type, key) {
+            try {
+                if (type === 'laws') {
+                    return offlineCache.laws[key];
+                } else if (type === 'rules') {
+                    return offlineCache.rules[key];
+                } else if (type === 'servers') {
+                    return offlineCache.servers;
+                }
+            } catch (e) {
+                log.warn('Failed to load from offline cache:', e);
+            }
+            return null;
+        },
+        
+        disableSelection() {
+            try {
+                document.body.style.userSelect = 'none';
+                document.body.style.webkitUserSelect = 'none';
+                document.body.style.msUserSelect = 'none';
+                document.body.style.mozUserSelect = 'none';
+            } catch (error) {
+                log.error('disableSelection error:', error);
+            }
+        },
+        
+        clearAllCache: function() {
+            try {
+                if (isStorageAvailable) {
+                    localStorage.removeItem('offline_laws');
+                    localStorage.removeItem('offline_rules');
+                    localStorage.removeItem('offline_servers');
+                    localStorage.removeItem('selectedServer');
+                    localStorage.removeItem('searchQuery');
+                    localStorage.removeItem('activeTab');
+                    localStorage.removeItem('windowOpacity');
+                    localStorage.removeItem('autoHideEnabled');
+                    localStorage.removeItem('hotkey');
+                    localStorage.removeItem('theme');
+                    console.log('[Cache] All offline cache cleared');
+                }
+                
+                if (typeof offlineCache !== 'undefined') {
+                    offlineCache.laws = {};
+                    offlineCache.rules = {};
+                    offlineCache.servers = null;
+                }
+                
+                if (window.SearchState && SearchState.lawsCache) {
+                    SearchState.lawsCache.clear();
+                    console.log('[Cache] SearchState lawsCache cleared');
+                }
+                
+                return true;
+            } catch (e) {
+                console.error('[Cache] Failed to clear cache:', e);
+                return false;
+            }
+        },
+        
+        // Плавное скрытие элемента
+        fadeOut(element, duration = 300) {
+            return new Promise((resolve) => {
+                if (!element) { resolve(); return; }
+                element.style.transition = `opacity ${duration}ms ease`;
+                element.style.opacity = '0';
+                setTimeout(() => {
+                    element.style.transition = '';
+                    resolve();
+                }, duration);
+            });
+        },
+        
+        // Плавный показ элемента
+        fadeIn(element, duration = 300) {
+            return new Promise((resolve) => {
+                if (!element) { resolve(); return; }
+                element.style.transition = `opacity ${duration}ms ease`;
+                element.style.opacity = '1';
+                setTimeout(() => {
+                    element.style.transition = '';
+                    resolve();
+                }, duration);
+            });
+        },
+        
+        // Новый метод для определения активной темы
+        getCurrentTheme() {
+            return document.documentElement.getAttribute('data-theme') || 'dark';
+        },
+        
+        // Новый метод для применения темы ко всем элементам
+        applyThemeToAll(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            
+            // Обновляем мета-теги если нужно
+            const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+            if (metaThemeColor) {
+                metaThemeColor.setAttribute('content', theme === 'dark' ? '#111111' : '#FFFFFF');
+            }
+        },
+        
+        // Новый метод для оптимизации производительности при скролле
+        optimizeScroll() {
+            let ticking = false;
+            
+            return (callback) => {
+                if (!ticking) {
+                    requestAnimationFrame(() => {
+                        callback();
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            };
+        }
+    };
+
+    const Notification = {
+        element: null,
+        timeout: null,
+        
+        init() {
+            try {
+                this.element = document.getElementById('copy-notification');
+                if (!this.element) {
+                    this.element = document.createElement('div');
+                    this.element.id = 'copy-notification';
+                    this.element.className = 'copy-notification hidden';
+                    this.element.innerHTML = `
+                        <svg width="14" height="14" viewBox="0 0 16 16">
+                            <circle cx="8" cy="8" r="7" stroke="#4ade80" stroke-width="1.5" fill="none"/>
+                            <path d="M5 8L7 10L11 6" stroke="#4ade80" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+                        </svg>
+                        <span class="copy-message">Скопировано</span>
+                    `;
+                    document.body.appendChild(this.element);
+                }
+            } catch (error) {
+                log.error('Notification.init error:', error);
+            }
+        },
+        
+        show(message = 'Скопировано') {
+            try {
+                if (!this.element) this.init();
+                
+                if (this.timeout) {
+                    clearTimeout(this.timeout);
+                    this.timeout = null;
+                }
+                
+                const msgSpan = this.element.querySelector('.copy-message');
+                if (msgSpan) msgSpan.textContent = message;
+                
+                // Позиционирование только через CSS-классы, без inline style-конфликтов
+                this.element.classList.remove('hidden', 'fade-out', 'fade-in');
+                // Форсируем reflow чтобы transition сработал после снятия hidden
+                void this.element.offsetWidth;
+                this.element.classList.add('fade-in');
+                
+                this.timeout = setTimeout(() => {
+                    this.element.classList.remove('fade-in');
+                    this.element.classList.add('fade-out');
+                    setTimeout(() => {
+                        this.element.classList.add('hidden');
+                        this.element.classList.remove('fade-out');
+                    }, 300);
+                }, 2000);
+                
+            } catch (error) {
+                log.error('Notification.show error:', error);
+            }
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        Notification.init();
+        Utils.disableSelection();
+    });
+
+    window.CONSTANTS = CONSTANTS;
+    window.Utils = Utils;
+    window.Notification = Notification;
+
+})();
+
+// Функция для принудительной перезагрузки данных
+window.forceReloadData = function() {
+    console.log('[Debug] Force reloading all data...');
+    
+    if (window.Utils && window.Utils.clearAllCache) {
+        window.Utils.clearAllCache();
+    }
+    
+    if (window.SearchState) {
+        if (window.SearchState.currentServer) {
+            const serverId = window.SearchState.currentServer;
+            if (SearchState.lawsCache) {
+                SearchState.lawsCache.clear();
+            }
+            SearchState.lawsData = [];
+            SearchState.filteredLaws = [];
+            SearchState.lawsLoaded = false;
+            
+            if (typeof loadLaws === 'function') {
+                loadLaws(serverId);
+            }
+        }
+        
+        if (typeof loadRules === 'function') {
+            loadRules();
+        }
+    }
+    
+    console.log('[Debug] Reload complete');
+};
+
+// Оптимизация производительности: используем requestIdleCallback если доступен
+window.requestIdleCallback = window.requestIdleCallback || function(cb) {
+    return setTimeout(() => cb({ timeRemaining: () => 0 }), 1);
+};
+
+window.cancelIdleCallback = window.cancelIdleCallback || function(id) {
+    clearTimeout(id);
+};
+
+console.log('[Core] Debug functions available: window.forceReloadData()');

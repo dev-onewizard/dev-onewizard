@@ -1,0 +1,56 @@
+{
+  "name": "codex-assistant",
+  "productName": "Codex Assistant",
+  "version": "1.0.5",
+  "description": "Codex Assistant — помощник по законам и правилам для MAJESTIC RP",
+  "author": {
+    "name": "onewizard-dev",
+    "url": "https://github.com/dev-onewizard"
+  },
+  "private": true,
+  "type": "commonjs",
+  "main": "main.js",
+  "homepage": "https://github.com/dev-onewizard/dev-onewizard",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dev-onewizard/dev-onewizard.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "electron-updater": "6.8.11",
+    "node-fetch": "^2.7.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "electron": "45.4.1",
+    "electron-builder": "26.18.0",
+    "tailwindcss": "3.4.19"
+  },
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/css/tailwind.css -o ./src/css/utilities.css --content \"./src/**/*.{html,js}\" --minify",
+    "prestart": "npm run build:css",
+    "start": "electron .",
+    "predev": "npm run build:css",
+    "dev": "electron . --devtools",
+    "prebuild": "npm run build:css",
+    "build": "electron-builder",
+    "predist": "npm run build:css",
+    "dist": "electron-builder --win --x64 --publish never",
+    "predist:portable": "npm run build:css",
+    "dist:portable": "electron-builder --win portable --x64 --publish never"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "os": [
+    "win32",
+    "darwin",
+    "linux"
+  ],
+  "cpu": [
+    "x64",
+    "ia32"
+  ]
+}

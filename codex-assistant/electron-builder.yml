@@ -1,0 +1,58 @@
+appId: com.onewizard.codex-assistant
+productName: Codex Assistant
+copyright: Copyright © 2026 onewizard-dev
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - main.js
+  - preload.js
+  - src/**/*
+  - assets/**/*
+  - package.json
+  - releases.json
+  - '!**/*.map'
+  - '!**/*.test.js'
+  - '!**/test/**'
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  icon: assets/Icon/icon.png
+  requestedExecutionLevel: asInvoker
+  artifactName: ${productName}-${version}-win.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Codex Assistant
+  deleteAppDataOnUninstall: false
+  language: 1049
+  license: LICENSE
+  artifactName: Codex-Assistant-Setup-${version}.${ext}
+
+portable:
+  artifactName: Codex-Assistant-${version}-portable.exe
+  requestExecutionLevel: user
+
+publish:
+  - provider: github
+    owner: dev-onewizard
+    repo: dev-onewizard
+    releaseType: release
+
+compression: maximum
+removePackageScripts: true
+removePackageKeywords: true
+asar: true
+asarUnpack:
+  - '**/*.node'
+  - '**/build/**/*'
