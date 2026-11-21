@@ -51,13 +51,3 @@
     />
   </picture>
 </div>
-
-## 📈 Активность
-
-<div align="center">
-  <img
-    src="https://github-readme-activity-graph.vercel.app/graph?username=dev-onewizard&theme=tokyo-night&area=true&hide_border=true&custom_title=Активность%20по%20дням&bg_color=0d1117&color=6A8DAB&line=6A8DAB&point=6A8DAB"
-    alt="График активности GitHub по дням"
-    width="100%"
-  />
-</div>
