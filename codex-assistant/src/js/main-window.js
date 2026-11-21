@@ -648,8 +648,6 @@ function setupEventListeners() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (document.querySelector('.main-window')) {
-        initMainWindow();
-        setupUpdateHandlers();
-    }
+    setupUpdateHandlers();
+    initMainWindow();
 });

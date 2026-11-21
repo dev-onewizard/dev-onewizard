@@ -1298,7 +1298,5 @@ window.debugReloadLaws = async function() {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (document.querySelector('.search-window')) {
-        initSearchWindow();
-    }
+    initSearchWindow();
 });
