@@ -155,17 +155,12 @@
 
     const AppToast = {
         show(message, type = 'success') {
-            if (!this.element) {
-                this.element = document.createElement('div');
-                this.element.className = 'app-toast';
-                this.element.setAttribute('role', 'status');
-                document.body.append(this.element);
-            }
+            const toast = document.getElementById('app-toast');
             clearTimeout(this.timer);
-            this.element.textContent = message;
-            this.element.dataset.type = type;
-            this.element.classList.add('is-visible');
-            this.timer = setTimeout(() => this.element.classList.remove('is-visible'), 2400);
+            document.getElementById('app-toast-text').textContent = message;
+            toast.dataset.type = type;
+            toast.classList.add('is-visible');
+            this.timer = setTimeout(() => toast.classList.remove('is-visible'), type === 'info' ? 4200 : 2400);
         }
     };
 

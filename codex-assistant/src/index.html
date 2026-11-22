@@ -28,7 +28,6 @@
           <button class="project-card" type="button" data-project="majestic" aria-pressed="true">
             <span class="project-art"><img src="../assets/projects/majestic.png" alt=""></span>
             <strong>Majestic RP</strong>
-            <span class="project-selection" aria-hidden="true"></span>
           </button>
           <button class="project-card" type="button" data-project="gta5rp" aria-pressed="false">
             <span class="project-art"><img src="../assets/projects/gta5rp.png" alt=""></span>
@@ -58,7 +57,6 @@
             <button id="hotkey-editor" class="hotkey-editor" type="button"><kbd id="hotkey-display">Ctrl+Shift+K</kbd></button>
           </div>
         </div>
-        <button id="open-search" class="button primary" type="button">Открыть поиск <span aria-hidden="true">↗</span></button>
       </section>
       <aside class="home-sidebar" aria-labelledby="history-title">
         <h2 id="history-title">Что нового</h2>
@@ -68,81 +66,92 @@
           <a id="link-github" href="https://github.com/dev-onewizard/dev-onewizard/tree/main/codex-assistant" class="icon-button link-icon" aria-label="GitHub" data-tooltip="GitHub"><span class="social-mark social-github" aria-hidden="true"></span></a>
           <a id="link-vk" href="https://vk.com/wizard_dev" class="icon-button link-icon" aria-label="ВКонтакте" data-tooltip="ВКонтакте"><span class="social-mark social-vk" aria-hidden="true"></span></a>
           <a id="donate" href="https://www.donationalerts.com/r/wizard_dev" class="icon-button link-icon" aria-label="Поддержать проект" data-tooltip="Поддержать проект"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></a>
- </nav>
+        </nav>
       </aside>
     </main>
 
     <main id="settings-content" class="settings-view hidden">
       <div class="settings-heading"><h1>Настройки</h1><span class="version-label">Версия <span id="settings-current-version">—</span></span></div>
-      <div class="settings-grid">
+      <div class="settings-stack">
         <section class="settings-card">
           <h2>Окно поиска</h2>
-          <div class="setting-row"><span>Цветовая тема</span><button id="settings-theme-toggle" class="button" type="button"><span id="settings-theme-text">Тёмная</span></button></div>
-          <div class="setting-row"><label for="settings-opacity-slider">Прозрачность поиска</label>
-            <div class="range-control"><input id="settings-opacity-slider" type="range" min="0" max="25" value="0"><output id="settings-opacity-value" for="settings-opacity-slider">0%</output></div>
+          <div class="settings-card-content">
+            <div class="setting-row"><span id="theme-label">Цветовая тема</span>
+              <div class="theme-options" role="group" aria-labelledby="theme-label">
+                <button class="theme-swatch" type="button" data-set-theme="dark" aria-label="Тёмная тема" aria-pressed="true" data-tooltip="Тёмная тема"></button>
+                <button class="theme-swatch" type="button" data-set-theme="light" aria-label="Светлая тема" aria-pressed="false" data-tooltip="Светлая тема"></button>
+              </div>
+            </div>
+            <div class="setting-row"><label for="settings-opacity-slider">Прозрачность поиска</label>
+              <div class="range-control"><input id="settings-opacity-slider" type="range" min="0" max="25" value="0"><output id="settings-opacity-value" for="settings-opacity-slider">0%</output></div>
+            </div>
+            <div class="setting-row"><label for="settings-auto-hide">Автоскрытие поиска</label><input id="settings-auto-hide" class="switch" type="checkbox" role="switch"></div>
           </div>
-          <div class="setting-row"><label for="settings-auto-hide">Автоскрытие поиска</label><input id="settings-auto-hide" class="switch" type="checkbox" role="switch"></div>
         </section>
 
         <section class="settings-card">
           <h2>Звук</h2>
-          <div class="setting-row"><label for="settings-sound-enabled">Звуковые эффекты</label><input id="settings-sound-enabled" class="switch" type="checkbox" role="switch" checked></div>
-          <div class="setting-row"><label for="settings-volume-slider">Громкость</label>
-            <div class="range-control"><input id="settings-volume-slider" type="range" min="0" max="100" value="70"><output id="settings-volume-value" for="settings-volume-slider">70%</output></div>
+          <div class="settings-card-content">
+            <div class="setting-row"><label for="settings-sound-enabled">Звуковые эффекты</label><input id="settings-sound-enabled" class="switch" type="checkbox" role="switch" checked></div>
+            <div class="setting-row"><label for="settings-volume-slider">Громкость</label>
+              <div class="range-control"><input id="settings-volume-slider" type="range" min="0" max="100" value="70"><output id="settings-volume-value" for="settings-volume-slider">70%</output></div>
+            </div>
+            <div class="setting-actions"><button class="button accent sound-preview-btn" type="button" data-sound="select">Проверить звук</button></div>
           </div>
-          <div class="setting-actions"><button class="button sound-preview-btn" type="button" data-sound="select">Проверить звук</button></div>
         </section>
 
         <section class="settings-card">
           <h2>Обновления</h2>
-          <div id="settings-auto-update-row" class="setting-row"><label id="settings-auto-update-label" for="settings-auto-update">Автоматическое обновление</label><input id="settings-auto-update" class="switch" type="checkbox" role="switch" checked></div>
-          <p id="settings-update-mode" class="setting-hint"></p>
-          <div class="setting-actions"><button id="settings-check-updates" class="button" type="button">Проверить обновления</button></div>
-          <div id="settings-update-info" class="update-status hidden">
-            <p id="settings-update-message" role="status"></p>
-            <progress id="settings-update-progress" class="hidden" aria-label="Загрузка обновления" max="100"></progress>
-            <button id="settings-install-update" class="button primary hidden" type="button">Перезапустить и установить</button>
-            <a id="settings-update-release" class="external-link hidden" href="https://github.com/dev-onewizard/dev-onewizard/releases/latest">Скачать обновление</a>
+          <div class="settings-card-content">
+            <div id="settings-auto-update-row" class="setting-row"><label id="settings-auto-update-label" for="settings-auto-update">Автоматическое обновление</label><input id="settings-auto-update" class="switch" type="checkbox" role="switch" checked></div>
+            <p id="settings-update-mode" class="setting-hint"></p>
+            <div class="setting-actions"><button id="settings-check-updates" class="button accent" type="button">Проверить обновления</button></div>
+            <div id="settings-update-info" class="update-status hidden">
+              <p id="settings-update-message" role="status"></p>
+              <progress id="settings-update-progress" class="hidden" aria-label="Загрузка обновления" max="100"></progress>
+              <button id="settings-install-update" class="button primary hidden" type="button">Перезапустить и установить</button>
+              <a id="settings-update-release" class="external-link hidden" href="https://github.com/dev-onewizard/dev-onewizard/releases/latest">Скачать обновление</a>
+            </div>
           </div>
         </section>
 
         <section class="settings-card">
           <h2>Хранилище</h2>
-          <div class="setting-row"><span>Размер кэша</span><output id="settings-cache-size">0 Б</output></div>
-
-          <div class="setting-actions">
-            <button id="settings-clear-cache" class="button" type="button">Очистить кэш</button>
-            <button id="settings-reset-all" class="button danger" type="button">Сбросить настройки</button>
+          <div class="settings-card-content">
+            <div class="setting-row"><span>Размер кэша</span><output id="settings-cache-size">0 Б</output></div>
+            <div class="setting-actions">
+              <button id="settings-clear-cache" class="button accent" type="button">Очистить кэш</button>
+              <button id="settings-reset-all" class="button danger" type="button">Сбросить настройки</button>
+            </div>
           </div>
         </section>
       </div>
 
     </main>
+    <div id="app-toast" class="app-toast" role="status"><span class="toast-icon" aria-hidden="true"></span><span id="app-toast-text"></span></div>
   </div>
 
-  <div id="update-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="update-title">
-    <div class="modal-overlay"></div>
+  <dialog id="update-modal" class="app-dialog" aria-labelledby="update-title" aria-describedby="update-message">
     <section class="modal-content">
       <h2 id="update-title">Доступна версия <span id="update-version"></span></h2>
-      <p>Обновление загружено. Приложение перезапустится при установке.</p>
+      <p id="update-message">Обновление загружено. Приложение перезапустится при установке.</p>
       <div class="modal-actions">
-        <button id="update-install-later" class="button" type="button">Позже</button>
+        <button id="update-install-later" class="button" type="button" autofocus>Позже</button>
         <button id="update-install-now" class="button primary" type="button">Установить</button>
       </div>
     </section>
-  </div>
+  </dialog>
 
-  <div id="confirm-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
-    <div class="modal-overlay"></div>
+  <dialog id="confirm-modal" class="app-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
     <section class="modal-content">
       <h2 id="confirm-title"></h2>
       <p id="confirm-message"></p>
       <div class="modal-actions">
-        <button id="confirm-no" class="button" type="button">Отмена</button>
+        <button id="confirm-no" class="button" type="button" autofocus>Отмена</button>
         <button id="confirm-yes" class="button primary" type="button">Подтвердить</button>
       </div>
     </section>
-  </div>
+  </dialog>
 
   <script src="js/app-core.js"></script>
   <script src="js/sound-manager.js"></script>

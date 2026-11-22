@@ -89,7 +89,6 @@ function setupMainTabs() {
 }
 
 function setupWindowControls() {
-    document.getElementById('open-search').onclick = () => window.CodexAPI.window.openSearch();
     document.getElementById('minimize-button')?.addEventListener('click', () => {
         window.CodexAPI.window.minimize();
         if (window.SoundManager) SoundManager.play('toggle');
@@ -120,7 +119,6 @@ function selectProject(id) {
     hint.classList.toggle('hidden', project.available);
     hint.textContent = project.available ? '' : project.name + ' — справочник появится позже. Горячая клавиша пока открывает поиск Majestic RP.';
     document.getElementById('majestic-controls').classList.toggle('hidden', !project.available);
-    document.getElementById('open-search').classList.toggle('hidden', !project.available);
 }
 
 async function loadServers() {
@@ -402,12 +400,12 @@ function renderUpdates(updates) {
     container.innerHTML = updates.map((update, index) => {
         const version = Utils.escapeHtml(update.version);
         const date = Utils.escapeHtml(update.date);
-        const items = update.items.map(item => '<li>' + Utils.escapeHtml(item) + '</li>').join('');
-        return '<details class="update-item" name="release-history"' + (index === 0 ? ' open' : '') + '>' +
-            '<summary><span class="update-version">' + (version ? 'Версия ' + version : date) + '</span>' +
-            (version ? '<span class="update-date">' + date + '</span>' : '') +
-            '<span class="chevron" aria-hidden="true"></span></summary>' +
-            '<ul class="update-items">' + items + '</ul></details>';
+        const items = update.items.map(item => '<p>' + Utils.escapeHtml(item) + '</p>').join('');
+        return '<article class="release-card' + (index === 0 ? ' release-latest' : '') + '">' +
+            '<header class="release-heading"><h3>' + (version ? 'Версия ' + version : date) + '</h3>' +
+            (index === 0 ? '<span class="release-badge">Свежая</span>' : '') + '</header>' +
+            (version ? '<p class="update-date">' + date + '</p>' : '') +
+            '<div class="release-notes">' + items + '</div></article>';
     }).join('');
 }
 
@@ -422,16 +420,20 @@ function setupUpdateHandlers() {
             window.SoundManager?.play('notification');
         } else if (mode === 'portable' && state === 'available') {
             notifiedVersion = latest;
-            AppToast.show(`Доступна версия ${latest}. Откройте «Настройки», чтобы перейти к релизу.`);
+            AppToast.show(`Доступна версия ${latest}. Откройте «Настройки», чтобы перейти к релизу.`, 'info');
         }
     });
 }
 
 function showUpdateModal(version) {
+    const confirmation = document.getElementById('confirm-modal');
+    if (confirmation.open) {
+        confirmation.addEventListener('close', () => showUpdateModal(version), { once: true });
+        return;
+    }
     const modal = document.getElementById('update-modal');
     document.getElementById('update-version').textContent = version;
-    modal.classList.remove('hidden');
-    document.getElementById('update-install-later').focus();
+    if (!modal.open) modal.showModal();
 }
 
 function setupEventListeners() {
@@ -443,17 +445,13 @@ function setupEventListeners() {
     });
 
     const modal = document.getElementById('update-modal');
-    const close = () => modal.classList.add('hidden');
+    const close = () => modal.close();
     document.getElementById('update-install-now').onclick = () => {
         window.CodexAPI.updates.install();
         close();
         SoundManager.play('select');
     };
     document.getElementById('update-install-later').onclick = close;
-    modal.addEventListener('keydown', event => {
-        if (event.key === 'Escape') close();
-    });
-
     for (const link of document.querySelectorAll('.link-icon, .external-link')) {
         link.addEventListener('click', event => {
             event.preventDefault();

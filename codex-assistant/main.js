@@ -606,6 +606,7 @@ async function createMainWindow() {
         frame: false,
         transparent: true,
         roundedCorners: false,
+        hasShadow: false,
         backgroundColor: '#00000000',
         icon: getIconPath(),
         webPreferences: {
@@ -651,6 +652,7 @@ function createSearchWindow(tab) {
         frame: false,
         transparent: true,
         roundedCorners: false,
+        hasShadow: false,
         alwaysOnTop: true,
         show: false,
         backgroundColor: '#00000000',

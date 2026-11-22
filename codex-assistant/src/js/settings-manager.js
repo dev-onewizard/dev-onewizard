@@ -1,6 +1,7 @@
 (() => {
     const api = window.CodexAPI;
     const el = id => document.getElementById(id);
+    const themeButtons = document.querySelectorAll('[data-set-theme]');
 
     function readLegacySettings() {
         try {
@@ -23,27 +24,15 @@
         const modal = el('confirm-modal');
         const yes = el('confirm-yes');
         const no = el('confirm-no');
-        const previousFocus = document.activeElement;
         el('confirm-title').textContent = title;
         el('confirm-message').textContent = message;
-        modal.classList.remove('hidden');
-        modal.classList.add('show');
-        no.focus();
-
-        function close() {
-            modal.classList.remove('show');
-            modal.classList.add('hidden');
-            document.removeEventListener('keydown', escape);
-            previousFocus?.focus();
-        }
-        function escape(event) {
-            if (event.key === 'Escape') close();
-        }
-        document.addEventListener('keydown', escape);
-        no.onclick = close;
-        modal.querySelector('.modal-overlay').onclick = close;
+        modal.showModal();
+        no.onclick = () => modal.close();
+        modal.onclick = event => {
+            if (event.target === modal) modal.close();
+        };
         yes.onclick = () => {
-            close();
+            modal.close();
             action();
         };
     }
@@ -58,10 +47,9 @@
             api.updates.onStatus(status => this.renderUpdateStatus(status));
             el('settings-install-update').onclick = () => api.updates.install();
 
-            el('settings-theme-toggle').onclick = () => {
-                const theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
-                this.save({ theme });
-            };
+            for (const button of themeButtons) {
+                button.onclick = () => this.save({ theme: button.dataset.setTheme });
+            }
             this.bindSlider('settings-opacity', 'opacity');
             this.bindSlider('settings-volume', 'soundVolume');
             el('settings-auto-hide').onchange = async event => {
@@ -113,7 +101,9 @@
             Utils.applyTheme(settings.theme);
             window.SoundManager?.setEnabled(settings.soundEnabled);
             window.SoundManager?.setVolume(settings.soundVolume);
-            el('settings-theme-text').textContent = settings.theme === 'light' ? 'Светлая' : 'Тёмная';
+            for (const button of themeButtons) {
+                button.setAttribute('aria-pressed', String(button.dataset.setTheme === document.documentElement.dataset.theme));
+            }
             Utils.renderRange(el('settings-opacity-slider'), el('settings-opacity-value'), settings.opacity);
             Utils.renderRange(el('settings-volume-slider'), el('settings-volume-value'), settings.soundVolume);
             el('settings-auto-hide').checked = settings.autoHide;
