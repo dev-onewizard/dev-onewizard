@@ -56,12 +56,16 @@
 
 Памятка для Majestic RP с поиском по законам 19 серверов и правилам проекта. [Исходники и запуск](./codex-assistant) · [Сборки для Windows](https://github.com/dev-onewizard/dev-onewizard/releases)
 
-![Главный экран Codex Assistant](./docs/codex-assistant-main-screen.png)
+Скриншоты версии **1.2.10**.
+
+### Экран загрузки
+
+![Запуск и проверка обновлений в Codex Assistant 1.2.10](./docs/screenshots/1.2.10/startup.png)
+
+### Главный экран
+
+![Главный экран Codex Assistant 1.2.10 с розовым баннером Majestic RP](./docs/screenshots/1.2.10/main.png)
 
 ### Настройки
 
-![Настройки Codex Assistant](./docs/codex-assistant-settings.png)
-
-### Запуск и проверка обновлений
-
-![Экран запуска Codex Assistant](./docs/codex-assistant-startup.png)
+![Экран настроек Codex Assistant 1.2.10](./docs/screenshots/1.2.10/settings.png)
