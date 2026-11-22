@@ -5,7 +5,15 @@ const MainState = {
     currentHotkey: 'Ctrl+Shift+K',
     isEditing: false,
     lastUpdateDate: null,
-    activeMainTab: 'main'
+    activeMainTab: 'main',
+    activeProject: null,
+    majesticLoad: null
+};
+
+const projects = {
+    majestic: { name: 'Majestic RP', available: true },
+    gta5rp: { name: 'GTA 5 RP', available: false },
+    'russia-online': { name: 'Россия Онлайн', available: false }
 };
 
 async function initMainWindow() {
@@ -13,6 +21,8 @@ async function initMainWindow() {
     
     setupWindowControls();
     setupMainTabs();
+    setupProjectChooser();
+    setupServerDropdown();
     
     setupEventListeners();
     setupHotkeyEditor();
@@ -28,9 +38,9 @@ async function initMainWindow() {
         MainState.selectedServer = 'new-york-1';
         updateServerButton();
         renderServersList();
-        loadServerData(MainState.selectedServer);
+        if (MainState.activeProject === 'majestic') loadServerData(MainState.selectedServer);
     });
-    await Promise.all([loadUpdatesHistory(), loadServers().then(loadSelectedServer)]);
+    await loadUpdatesHistory();
     loadHotkey();
     console.log('[Main] Ready');
 }
@@ -47,11 +57,12 @@ function setupMainTabs() {
     }
     
     tabMain.addEventListener('click', () => {
+        showProjectOverview();
         if (MainState.activeMainTab === 'main') return;
         
         MainState.activeMainTab = 'main';
         
-tabMain.classList.add('active');
+        tabMain.classList.add('active');
         tabMain.setAttribute('aria-pressed', 'true');
         tabSettings.classList.remove('active');
         tabSettings.setAttribute('aria-pressed', 'false');
@@ -82,7 +93,8 @@ tabMain.classList.add('active');
 }
 
 function setupWindowControls() {
-    document.getElementById('open-search')?.addEventListener('click', () => window.CodexAPI.window.toggleSearch());
+    document.getElementById('open-search').onclick = () => window.CodexAPI.window.openSearch('laws');
+    document.getElementById('open-rules').onclick = () => window.CodexAPI.window.openSearch('rules');
     document.getElementById('minimize-button')?.addEventListener('click', () => {
         window.CodexAPI.window.minimize();
         if (window.SoundManager) SoundManager.play('toggle');
@@ -91,6 +103,56 @@ function setupWindowControls() {
     document.getElementById('close-button')?.addEventListener('click', () => {
         window.CodexAPI.window.close();
     });
+}
+
+function setupProjectChooser() {
+    const grid = document.getElementById('project-grid');
+    grid.addEventListener('click', event => {
+        const card = event.target.closest('.project-card');
+        if (card) openProject(card.dataset.project);
+    });
+    document.getElementById('back-projects').onclick = () => {
+        const previous = MainState.activeProject;
+        showProjectOverview();
+        grid.querySelector('[data-project="' + previous + '"]')?.focus();
+    };
+}
+
+function showProjectOverview() {
+    MainState.activeProject = null;
+    delete document.documentElement.dataset.project;
+    document.getElementById('project-detail').classList.add('hidden');
+    document.getElementById('project-overview').classList.remove('hidden');
+}
+
+function openProject(id) {
+    if (!Object.hasOwn(projects, id)) return;
+    const project = projects[id];
+    MainState.activeProject = id;
+    document.documentElement.dataset.project = id;
+    document.getElementById('project-overview').classList.add('hidden');
+    document.getElementById('project-detail').classList.remove('hidden');
+    document.getElementById('majestic-controls').classList.toggle('hidden', !project.available);
+
+    const heading = document.getElementById('project-title');
+    heading.textContent = project.name;
+    document.getElementById('project-logo').src = '../assets/projects/' + id + '.png';
+    document.getElementById('project-description').textContent = project.available
+        ? 'Законы и правила проекта'
+        : 'Скоро здесь появятся законы и правила проекта.';
+    heading.focus();
+    if (!project.available) return;
+
+    if (!MainState.majesticLoad) {
+        MainState.majesticLoad = loadServers().then(() => {
+            if (!MainState.servers.length) {
+                MainState.majesticLoad = null;
+                return;
+            }
+            return loadSelectedServer();
+        });
+    }
+    window.CodexAPI.window.openSearch('laws');
 }
 
 async function loadServers() {
@@ -144,8 +206,6 @@ async function loadSelectedServer() {
     
     updateServerButton();
     renderServersList();
-    setupServerDropdown();
-    
     if (MainState.selectedServer) {
         loadServerData(MainState.selectedServer);
     }

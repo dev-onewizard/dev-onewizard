@@ -7,11 +7,11 @@ const fetch = require('node-fetch');
 const Analytics = require('./src/js/analytics.js');
 
 // ========== ИСТОЧНИК ДАННЫХ ==========
-const DATA_OWNER = 'alamantik';
+const DATA_OWNER = 'dev-onewizard';
 const DATA_REPO = 'majestic-laws-db';
 const DATA_BRANCH = 'main';
 const BASE_URL = `https://raw.githubusercontent.com/${DATA_OWNER}/${DATA_REPO}/${DATA_BRANCH}`;
-const REPO_STRUCTURE_URL = `${BASE_URL}/repo_structure.json`;
+const UPSTREAM_BASE_URL = `https://raw.githubusercontent.com/alamantik/${DATA_REPO}/${DATA_BRANCH}`;
 const RELEASES_PAGE = 'https://github.com/dev-onewizard/dev-onewizard/releases/latest';
 const DEFAULT_PREFS = { opacity: 0, theme: 'dark', soundEnabled: true, soundVolume: 70, autoUpdate: true };
 const SERVER_FILE_NAMES = {
@@ -235,6 +235,16 @@ function fetchRepoStructure(forceRefresh = false) {
     return forceRefresh ? requestRepoStructure(true) : oncePerRequest('catalog', requestRepoStructure);
 }
 
+async function fetchReference(relativePath, timeout) {
+    try {
+        const response = await fetch(`${BASE_URL}/${relativePath}`, { timeout });
+        if (response.ok) return response;
+    } catch (error) {
+        console.warn('[API] Dataset fork unavailable:', error.message);
+    }
+    return fetch(`${UPSTREAM_BASE_URL}/${relativePath}`, { timeout });
+}
+
 async function requestRepoStructure(ignoreCache = false) {
     if (!ignoreCache && dataCache.structure && (Date.now() - dataCache.structureTimestamp) < CACHE_TTL) {
         return dataCache.structure;
@@ -242,10 +252,7 @@ async function requestRepoStructure(ignoreCache = false) {
     
     const generation = cacheGeneration;
     try {
-        console.log('[API] Fetching repo structure from:', REPO_STRUCTURE_URL);
-        const response = await fetch(REPO_STRUCTURE_URL, { 
-            timeout: 5000
-        });
+        const response = await fetchReference('repo_structure.json', 5000);
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
@@ -452,12 +459,7 @@ async function requestServerJson(serverId, forceRefresh = false) {
         const structure = dataCache.structure || await fetchRepoStructure();
         const fileName = parseServerFiles(structure).find(({ id }) => id === normalizedId)?.file
             || `${SERVER_FILE_NAMES[normalizedId] || normalizedId}.json`;
-        const url = `${BASE_URL}/laws/${encodeURIComponent(fileName)}`;
-        console.log(`[API] Fetching laws for ${normalizedId} from ${url}`);
-        
-        const response = await fetch(url, { 
-            timeout: 10000
-        });
+        const response = await fetchReference(`laws/${encodeURIComponent(fileName)}`, 10000);
         
         if (response.status === 404) {
             console.warn(`[API] Laws file for ${normalizedId} not found (404)`);
@@ -517,12 +519,7 @@ async function fetchRulesJson(filename, forceRefresh = false) {
     const generation = cacheGeneration;
     const offline = () => forceRefresh ? null : readCachedData(cacheKey);
     try {
-        const url = `${BASE_URL}/rules/${safeFilename}.json`;
-        console.log(`[API] Fetching rules ${safeFilename} from ${url}`);
-        
-        const response = await fetch(url, { 
-            timeout: 5000
-        });
+        const response = await fetchReference(`rules/${safeFilename}.json`, 5000);
         
         if (response.status === 404) {
             console.warn(`[API] Rules file ${safeFilename} not found (404)`);
@@ -644,7 +641,7 @@ async function createMainWindow() {
     registerToggleHotkey(currentHotkey);
 }
 
-function createSearchWindow() {
+function createSearchWindow(tab) {
     autoHideEnabled = readAutoHide();
     
     searchWindow = new BrowserWindow({
@@ -667,7 +664,9 @@ function createSearchWindow() {
     
     searchWindow.setAlwaysOnTop(true, 'screen-saver');
     searchWindow.setVisibleOnAllWorkspaces(true);
-    searchWindow.loadFile(path.join(__dirname, 'src', 'search.html'));
+    searchWindow.loadFile(path.join(__dirname, 'src', 'search.html'), {
+        query: tab ? { tab } : {}
+    });
     
     if (isDev) {
         searchWindow.webContents.on('before-input-event', (event, input) => {
@@ -721,6 +720,25 @@ function toggleSearchWindow() {
     if (!searchWindow) createSearchWindow();
     else if (!searchWindow.webContents.isLoading()) showSearchWindow();
     Analytics.trackHotkeyUse();
+}
+
+function openSearchWindow(tab) {
+    if (isEditingHotkey || (tab !== 'laws' && tab !== 'rules')) return;
+    if (!searchWindow) {
+        createSearchWindow(tab);
+        return;
+    }
+
+    const target = searchWindow;
+    const selectTab = () => {
+        if (!target.isDestroyed()) target.webContents.send('window:select-search-tab', tab);
+    };
+    if (target.webContents.isLoading()) {
+        target.webContents.once('did-finish-load', selectTab);
+    } else {
+        selectTab();
+        showSearchWindow();
+    }
 }
 
 // ========== СИСТЕМА ГОРЯЧИХ КЛАВИШ ==========
@@ -980,6 +998,9 @@ function setupIPCHandlers() {
         if (event.sender === searchWindow?.webContents) hideSearchWindow();
     });
     ipcMain.on('window:toggle-search', toggleSearchWindow);
+    ipcMain.on('window:open-search', (event, tab) => {
+        if (event.sender === mainWindow?.webContents) openSearchWindow(tab);
+    });
     
     // Новый обработчик для звука
     ipcMain.on('play-sound', (event, type) => {

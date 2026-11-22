@@ -10,9 +10,9 @@
 <body>
   <div class="app-frame">
     <header class="titlebar">
-      <div class="brand"><span class="brand-mark" aria-hidden="true">§</span><span>Codex Assistant</span></div>
+      <div class="brand"><img class="brand-mark" src="../assets/Icon/icon.png" alt=""><span>Codex Assistant</span></div>
       <nav class="segmented main-tabs" aria-label="Разделы">
-        <button id="tab-main" class="active" type="button" aria-pressed="true">Главная</button>
+        <button id="tab-main" class="active" type="button" aria-pressed="true">Проекты</button>
         <button id="tab-settings" type="button" aria-pressed="false">Настройки</button>
       </nav>
       <div class="window-controls">
@@ -26,12 +26,36 @@
     </header>
 
     <main id="main-content" class="home-view">
-      <section class="launch-panel" aria-labelledby="home-title">
-        <div class="launch-intro">
-          <h1 id="home-title">Справочник<br>Majestic RP</h1>
-          <p>Законы и правила поверх игры</p>
+      <section id="project-overview" class="project-overview" aria-labelledby="home-title">
+        <h1 id="home-title">Выбери проект</h1>
+        <p class="page-description">Законы и правила для ролевых серверов</p>
+        <div id="project-grid" class="project-grid">
+          <button class="project-card" type="button" data-project="majestic">
+            <span class="project-art"><img src="../assets/projects/majestic.png" alt=""></span>
+            <span class="project-caption"><strong>Majestic RP</strong><span class="project-arrow" aria-hidden="true">↗</span></span>
+            <span class="project-description">Законы и правила</span>
+          </button>
+          <button class="project-card" type="button" data-project="gta5rp">
+            <span class="project-art"><img src="../assets/projects/gta5rp.png" alt=""></span>
+            <span class="project-caption"><strong>GTA 5 RP</strong><span class="project-status">Скоро</span></span>
+          </button>
+          <button class="project-card" type="button" data-project="russia-online">
+            <span class="project-art"><img src="../assets/projects/russia-online.png" alt=""></span>
+            <span class="project-caption"><strong>Россия Онлайн</strong><span class="project-status">Скоро</span></span>
+          </button>
         </div>
-        <div class="launch-controls">
+      </section>
+      <section id="project-detail" class="project-detail hidden" aria-labelledby="project-title">
+        <button id="back-projects" class="back-button" type="button">← Все проекты</button>
+        <div class="project-heading">
+          <div>
+            <h1 id="project-title" tabindex="-1"></h1>
+            <p id="project-description" class="page-description"></p>
+          </div>
+          <div class="project-art"><img id="project-logo" alt=""></div>
+        </div>
+        <div id="majestic-controls" class="project-controls hidden">
+          <div class="project-fields">
           <div class="field">
             <label for="server-selector-button">Игровой сервер</label>
             <div id="server-selector" class="picker">
@@ -46,22 +70,18 @@
             <label for="hotkey-editor">Горячая клавиша</label>
             <button id="hotkey-editor" class="hotkey-editor" type="button" title="Изменить горячую клавишу"><kbd id="hotkey-display">Ctrl+Shift+K</kbd></button>
           </div>
-          <button id="open-search" class="button primary open-search" type="button">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
-            Открыть поиск
-            <svg class="open-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
-          </button>
+          </div>
+          <div class="project-actions">
+            <button id="open-search" class="button primary" type="button">Законы <span aria-hidden="true">↗</span></button>
+            <button id="open-rules" class="button secondary-action" type="button">Правила <span aria-hidden="true">↗</span></button>
+          </div>
+          <div class="project-meta">
+            <span id="update-indicator" class="data-status hidden"><span id="last-update-text"></span></span>
+            <a class="external-link" href="https://github.com/dev-onewizard/majestic-laws-db">Источник данных</a>
+          </div>
         </div>
-        <div id="update-indicator" class="data-status hidden"><span id="last-update-text"></span></div>
       </section>
-
-      <section class="history-panel" aria-labelledby="history-title">
-        <h2 id="history-title">Что нового</h2>
-        <div id="updates-list" class="updates-list"></div>
-      </section>
-
       <footer class="home-footer">
-        <a class="external-link" href="https://github.com/alamantik/majestic-laws-db">Источник правил и законов</a>
         <nav class="social-links" aria-label="Ссылки">
           <a id="link-telegram" href="https://t.me/one1_wizard" class="icon-button link-icon" aria-label="Telegram" title="Telegram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 3.4 2.8 10.7c-1.1.4-1.1 1.1-.2 1.4l4.8 1.5 10.9-6.9c.5-.3.9-.1.5.2l-8.8 8.2-.3 4.3c.5 0 .7-.2 1-.5l2.3-2.2 4.9 3.6c.9.5 1.4.2 1.6-.8l3.2-15c.3-1.1-.4-1.6-1.1-1.1Z"/></svg></a>
           <a id="link-github" href="https://github.com/dev-onewizard/dev-onewizard/tree/main/codex-assistant" class="icon-button link-icon" aria-label="GitHub" title="GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg></a>
@@ -108,13 +128,17 @@
         <section class="settings-card">
           <h2>Данные</h2>
           <div class="setting-row"><span>Размер кэша</span><output id="settings-cache-size">0 Б</output></div>
-          <p class="setting-hint"><a class="external-link" href="https://github.com/alamantik/majestic-laws-db/tree/main">База законов и правил</a></p>
+          <p class="setting-hint"><a class="external-link" href="https://github.com/dev-onewizard/majestic-laws-db/tree/main">База законов и правил</a></p>
           <div class="setting-actions">
             <button id="settings-clear-cache" class="button" type="button">Очистить кэш</button>
             <button id="settings-reset-all" class="button danger" type="button">Сбросить настройки</button>
           </div>
         </section>
       </div>
+      <details class="settings-history">
+        <summary>Что нового</summary>
+        <div id="updates-list" class="updates-list"></div>
+      </details>
     </main>
   </div>
 

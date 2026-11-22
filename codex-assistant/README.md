@@ -1,6 +1,6 @@
 # Codex Assistant
 
-Оверлей-справочник для Majestic RP: быстрый поиск законов и правил поверх игры, выбор сервера, работа с кэшем и обновления приложения через GitHub Releases.
+Оверлей-справочник для ролевых проектов. Сейчас законы и правила доступны для Majestic RP. GTA 5 RP и Россия Онлайн представлены на экране выбора проекта.
 
 ## Возможности
 
@@ -13,7 +13,7 @@
 
 ## База Majestic
 
-Приложение читает список серверов из `repo_structure.json`, кодексы из `laws/` и общие правила из `rules/general.json`, `rules/events.json` и `rules/organizations.json` в [`alamantik/majestic-laws-db`](https://github.com/alamantik/majestic-laws-db). База охватывает 19 серверов Majestic. Приложение сохраняет загруженные данные для доступа без сети. Очистка кэша удаляет эти копии. Сброс настроек возвращает исходные значения в обоих окнах.
+Приложение читает список серверов из `repo_structure.json`, кодексы из `laws/` и общие правила из `rules/` в [`dev-onewizard/majestic-laws-db`](https://github.com/dev-onewizard/majestic-laws-db). В случае недоступности файлов запрос идёт в [исходную базу](https://github.com/alamantik/majestic-laws-db). База охватывает 19 серверов Majestic. Загруженные данные доступны офлайн.
 
 ## Запуск и разработка
 

@@ -15,6 +15,8 @@ const api = {
         close: () => ipcRenderer.send('window:close'),
         hideSearch: () => ipcRenderer.send('window:hide-search'),
         toggleSearch: () => ipcRenderer.send('window:toggle-search'),
+        openSearch: tab => ipcRenderer.send('window:open-search', tab),
+        onSearchTab: cb => subscribe('window:select-search-tab', cb),
     },
     preferences: {
         get: () => ipcRenderer.invoke('preferences:get'),

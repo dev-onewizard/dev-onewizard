@@ -39,15 +39,29 @@ async function initSearchWindow() {
         window.CodexAPI.utils.openExternal(event.currentTarget.href);
     };
     window.CodexAPI.server.onChange(serverId => selectSearchServer(serverId, false));
+    let requestedTab = new URLSearchParams(window.location.search).get('tab');
+    let ready = false;
+    window.CodexAPI.window.onSearchTab(tab => {
+        if (tab !== 'laws' && tab !== 'rules') return;
+        requestedTab = tab;
+        if (ready) selectRequestedTab(tab);
+    });
 
     try {
         await Promise.all([setupSettingsSync(), loadServersList()]);
-        if (localStorage.getItem('activeTab') === 'rules') activateRulesTab();
-        else loadLaws(SearchState.currentServer);
+        ready = true;
+        const initial = requestedTab || localStorage.getItem('activeTab');
+        selectRequestedTab(initial === 'rules' ? 'rules' : 'laws');
     } catch (error) {
         console.error('[Search] Initialization failed:', error);
         showError('Не удалось загрузить справочник. Проверьте подключение.');
     }
+}
+
+function selectRequestedTab(tab) {
+    if (tab === 'rules') activateRulesTab();
+    else if (SearchState.activeTab !== 'laws') activateLawsTab();
+    else if (!SearchState.lawsLoaded && lawRequest === 0) loadLaws(SearchState.currentServer);
 }
 
 async function setupSettingsSync() {
