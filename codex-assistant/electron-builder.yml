@@ -24,7 +24,7 @@ win:
       arch: [x64]
     - target: portable
       arch: [x64]
-  icon: assets/Icon/icon.png
+  icon: assets/Icon/windows.ico
   requestedExecutionLevel: asInvoker
   artifactName: ${productName}-${version}-win.${ext}
 
@@ -38,6 +38,11 @@ nsis:
   deleteAppDataOnUninstall: false
   language: 1049
   license: LICENSE
+  include: build/installer.nsh
+  installerIcon: build/windows/setup.ico
+  uninstallerIcon: assets/Icon/windows.ico
+  installerHeader: build/windows/header.bmp
+  installerSidebar: build/windows/welcome.bmp
   artifactName: Codex-Assistant-Setup-${version}.${ext}
 
 portable:

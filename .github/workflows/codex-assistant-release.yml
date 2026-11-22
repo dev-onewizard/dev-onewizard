@@ -50,7 +50,41 @@ jobs:
 
       - name: Build Windows assets
         if: steps.version.outputs.publish == 'true'
-        run: npm run dist
+        shell: pwsh
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          REQUIRE_WINDOWS_SIGNATURE: ${{ vars.REQUIRE_WINDOWS_SIGNATURE }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if ([bool]$env:WIN_CSC_LINK -ne [bool]$env:WIN_CSC_KEY_PASSWORD) {
+            throw 'Set both Windows signing secrets'
+          }
+          if ($env:REQUIRE_WINDOWS_SIGNATURE -eq 'true' -and !$env:WIN_CSC_LINK) {
+            throw 'Windows signing is required but the signing secrets are missing'
+          }
+          npm run dist
+          if ($LASTEXITCODE -ne 0) { throw 'Windows build failed' }
+
+          if ($env:WIN_CSC_LINK) {
+            $version = $env:RELEASE_TAG.Substring(1)
+            $executables = @(
+              'dist/win-unpacked/Codex Assistant.exe'
+              "dist/Codex-Assistant-Setup-$version.exe"
+              "dist/Codex-Assistant-$version-portable.exe"
+            )
+            foreach ($exe in $executables) {
+              $signature = Get-AuthenticodeSignature -LiteralPath $exe
+              if ($signature.Status -ne 'Valid') { throw "Invalid Windows signature: $exe ($($signature.Status))" }
+            }
+          }
+
+      - name: Verify upgrades from 1.2.1
+        if: steps.version.outputs.publish == 'true'
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: ./build/verify-upgrade.ps1 -Version ($env:RELEASE_TAG.Substring(1))
 
       - name: Publish verified assets
         if: steps.version.outputs.publish == 'true'

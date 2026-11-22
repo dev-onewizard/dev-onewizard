@@ -82,8 +82,8 @@ function getCacheSize() {
 // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
 
 function getIconPath() {
-    const iconPath = path.join(__dirname, 'assets', 'Icon', 'icon.png');
-    return fs.existsSync(iconPath) ? iconPath : path.join(__dirname, 'assets', 'Icon', 'icon.png');
+    const iconName = process.platform === 'win32' ? 'windows.ico' : 'icon.png';
+    return path.join(__dirname, 'assets', 'Icon', iconName);
 }
 
 function getConfigPath() {
@@ -989,7 +989,7 @@ function setupIPCHandlers() {
         if (!downloadedVersion || updateStatus.state === 'installing' ||
             event.sender !== mainWindow?.webContents) return;
         publishUpdateStatus('installing', { latest: downloadedVersion });
-        autoUpdater.quitAndInstall(false, true);
+        autoUpdater.quitAndInstall(true, true);
     });
     ipcMain.on('window:minimize', () => mainWindow?.minimize());
     ipcMain.on('window:close', () => app.quit());
@@ -1170,6 +1170,9 @@ function setupIPCHandlers() {
 
 app.whenReady().then(async () => {
     console.log('[App] Ready, isDev:', isDev);
+    if (process.platform === 'win32') {
+        app.setAppUserModelId('com.onewizard.codex-assistant');
+    }
     Menu.setApplicationMenu(null);
     
     currentHotkey = readHotkey();
