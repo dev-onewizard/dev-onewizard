@@ -100,7 +100,11 @@ function setupWindowControls() {
 }
 
 function setupProjectChooser() {
-    document.getElementById('project-grid').addEventListener('click', event => {
+    const grid = document.getElementById('project-grid');
+    for (const card of grid.querySelectorAll('.project-card')) {
+        card.querySelector('.project-status').hidden = projects[card.dataset.project].available;
+    }
+    grid.addEventListener('click', event => {
         const card = event.target.closest('.project-card');
         if (card) selectProject(card.dataset.project);
     });
@@ -109,16 +113,18 @@ function setupProjectChooser() {
 function selectProject(id) {
     if (!Object.hasOwn(projects, id)) return;
     const project = projects[id];
+    const hint = document.getElementById('project-status');
+    hint.classList.toggle('hidden', project.available);
+    hint.textContent = project.available ? '' : project.name + ' — справочник появится позже. Горячая клавиша пока открывает поиск Majestic RP.';
+    if (!project.available) return;
+
     document.documentElement.dataset.project = id;
 
     for (const card of document.querySelectorAll('.project-card')) {
         card.setAttribute('aria-pressed', String(card.dataset.project === id));
     }
 
-    const hint = document.getElementById('project-status');
-    hint.classList.toggle('hidden', project.available);
-    hint.textContent = project.available ? '' : project.name + ' — справочник появится позже. Горячая клавиша пока открывает поиск Majestic RP.';
-    document.getElementById('majestic-controls').classList.toggle('hidden', !project.available);
+    document.getElementById('majestic-controls').classList.toggle('hidden', id !== 'majestic');
 }
 
 async function loadServers() {
@@ -452,9 +458,17 @@ function setupEventListeners() {
         SoundManager.play('select');
     };
     document.getElementById('update-install-later').onclick = close;
+
+    const linksButton = document.getElementById('links-button');
+    const linksMenu = document.getElementById('links-dropdown');
+    Utils.bindDropdown(linksButton, linksMenu);
     for (const link of document.querySelectorAll('.link-icon, .external-link')) {
         link.addEventListener('click', event => {
             event.preventDefault();
+            if (linksMenu.contains(link)) {
+                Utils.setDropdown(linksButton, linksMenu, false);
+                linksButton.focus();
+            }
             window.CodexAPI.utils.openExternal(link.href);
             SoundManager.play('click');
         });

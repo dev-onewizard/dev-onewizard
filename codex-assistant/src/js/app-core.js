@@ -139,10 +139,12 @@
 
         bindDropdown(button, menu) {
             const setOpen = open => this.setDropdown(button, menu, open);
-            button.addEventListener('click', () => setOpen(menu.classList.contains('hidden')));
-            document.addEventListener('pointerdown', event => {
+            const closeOutside = event => {
                 if (!button.contains(event.target) && !menu.contains(event.target)) setOpen(false);
-            });
+            };
+            button.addEventListener('click', () => setOpen(menu.classList.contains('hidden')));
+            document.addEventListener('pointerdown', closeOutside);
+            document.addEventListener('focusin', closeOutside);
             document.addEventListener('keydown', event => {
                 if (event.key === 'Escape' && !menu.classList.contains('hidden')) {
                     event.preventDefault();

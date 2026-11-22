@@ -26,21 +26,30 @@
         <h1 id="home-title">Проекты</h1>
         <div id="project-grid" class="project-grid">
           <button class="project-card" type="button" data-project="majestic" aria-pressed="true">
-            <span class="project-art"><img src="../assets/projects/majestic.svg" alt=""></span>
+            <span class="project-art">
+              <img class="project-image project-image-muted" src="../assets/projects/majestic-mono.jpg" alt="">
+              <img class="project-image project-image-color" src="../assets/projects/majestic.jpg" alt="">
+              <span class="project-status" hidden>Скоро</span>
+            </span>
             <strong>Majestic RP</strong>
           </button>
           <button class="project-card" type="button" data-project="gta5rp" aria-pressed="false">
-            <span class="project-art"><img src="../assets/projects/gta5rp.png" alt=""></span>
+            <span class="project-art">
+              <img class="project-image project-image-muted" src="../assets/projects/gta5rp-mono.jpg" alt="">
+              <img class="project-image project-image-color" src="../assets/projects/gta5rp.jpg" alt="">
+              <span class="project-status">Скоро</span>
+            </span>
             <strong>GTA 5 RP</strong>
-            <span class="project-status">Скоро</span>
           </button>
           <button class="project-card" type="button" data-project="russia-online" aria-pressed="false">
-            <span class="project-art"><img src="../assets/projects/russia-online.svg" alt=""></span>
+            <span class="project-art">
+              <img class="project-image project-image-muted" src="../assets/projects/russia-online-mono.jpg" alt="">
+              <img class="project-image project-image-color" src="../assets/projects/russia-online.jpg" alt="">
+              <span class="project-status">Скоро</span>
+            </span>
             <strong>Россия Онлайн</strong>
-            <span class="project-status">Скоро</span>
           </button>
         </div>
-        <p id="project-status" class="project-message hidden" role="status"></p>
         <div class="project-controls">
           <div id="majestic-controls" class="field">
             <label for="server-selector-button">Сервер</label>
@@ -57,16 +66,22 @@
             <button id="hotkey-editor" class="hotkey-editor" type="button"><kbd id="hotkey-display">Ctrl+Shift+K</kbd></button>
           </div>
         </div>
+        <nav class="quick-links picker" aria-label="Ссылки">
+          <button id="links-button" class="picker-button" type="button" aria-expanded="false" aria-controls="links-dropdown">
+            <span>Ссылки</span><span class="chevron" aria-hidden="true"></span>
+          </button>
+          <div id="links-dropdown" class="dropdown links-dropdown hidden">
+            <a id="link-telegram" href="https://t.me/one1_wizard" class="link-icon"><span class="social-mark social-telegram" aria-hidden="true"></span><span>Telegram</span></a>
+            <a id="link-github" href="https://github.com/dev-onewizard/dev-onewizard/tree/main/codex-assistant" class="link-icon"><span class="social-mark social-github" aria-hidden="true"></span><span>GitHub</span></a>
+            <a id="link-vk" href="https://vk.com/wizard_dev" class="link-icon"><span class="social-mark social-vk" aria-hidden="true"></span><span>ВКонтакте</span></a>
+            <a id="donate" href="https://www.donationalerts.com/r/wizard_dev" class="link-icon" aria-label="Поддержать проект"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg><span>Поддержать</span></a>
+          </div>
+        </nav>
+        <p id="project-status" class="project-message hidden" role="status"></p>
       </section>
       <aside class="home-sidebar" aria-labelledby="history-title">
         <h2 id="history-title">Что нового</h2>
         <div id="updates-list" class="updates-list"></div>
-        <nav class="social-links" aria-label="Ссылки">
-          <a id="link-telegram" href="https://t.me/one1_wizard" class="icon-button link-icon" aria-label="Telegram" data-tooltip="Telegram"><span class="social-mark social-telegram" aria-hidden="true"></span></a>
-          <a id="link-github" href="https://github.com/dev-onewizard/dev-onewizard/tree/main/codex-assistant" class="icon-button link-icon" aria-label="GitHub" data-tooltip="GitHub"><span class="social-mark social-github" aria-hidden="true"></span></a>
-          <a id="link-vk" href="https://vk.com/wizard_dev" class="icon-button link-icon" aria-label="ВКонтакте" data-tooltip="ВКонтакте"><span class="social-mark social-vk" aria-hidden="true"></span></a>
-          <a id="donate" href="https://www.donationalerts.com/r/wizard_dev" class="icon-button link-icon" aria-label="Поддержать проект" data-tooltip="Поддержать проект"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></a>
-        </nav>
       </aside>
     </main>
 
