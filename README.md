@@ -55,3 +55,5 @@
 ## Codex Assistant
 
 Памятка для Majestic RP с поиском по законам 19 серверов и правилам проекта. [Исходники и запуск](./codex-assistant) · [Сборки для Windows](https://github.com/dev-onewizard/dev-onewizard/releases)
+
+![Главный экран Codex Assistant](./docs/codex-assistant-main-screen.png)
