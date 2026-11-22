@@ -116,6 +116,8 @@
         },
 
         getServerIcon(serverId) {
+            const gtaServer = /^gta5rp-([a-z]+)$/.exec(serverId);
+            if (gtaServer) return '<img src="../assets/servers/gta5rp/' + gtaServer[1] + '.svg" alt="">';
             if (/^ro[123]$/.test(serverId)) return '<img src="../assets/servers/' + serverId + '.svg" alt="">';
             if (serverId === 'orlando-18') return '<img src="../assets/servers/ru18.svg" alt="">';
             if (serverId === 'memphis-19') return '<img src="../assets/servers/ru19.svg" alt="">';

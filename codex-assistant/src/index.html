@@ -36,7 +36,6 @@
             <span class="project-art">
               <img class="project-image project-image-muted" src="../assets/projects/majestic-mono.jpg" alt="">
               <img class="project-image project-image-color" src="../assets/projects/majestic.jpg" alt="">
-              <span class="project-status" hidden>Скоро</span>
             </span>
             <strong>Majestic RP</strong>
           </button>
@@ -44,7 +43,6 @@
             <span class="project-art">
               <img class="project-image project-image-muted" src="../assets/projects/gta5rp-mono.jpg" alt="">
               <img class="project-image project-image-color" src="../assets/projects/gta5rp.jpg" alt="">
-              <span class="project-status">Скоро</span>
             </span>
             <strong>GTA 5 RP</strong>
           </button>
@@ -52,7 +50,6 @@
             <span class="project-art">
               <img class="project-image project-image-muted" src="../assets/projects/russia-online-mono.jpg" alt="">
               <img class="project-image project-image-color" src="../assets/projects/russia-online.jpg" alt="">
-              <span class="project-status" hidden>Скоро</span>
             </span>
             <strong>Россия Онлайн</strong>
           </button>
@@ -129,13 +126,13 @@
         <section class="settings-card">
           <h2>Обновления</h2>
           <div class="settings-card-content">
-            <div id="settings-auto-update-row" class="setting-row"><label id="settings-auto-update-label" for="settings-auto-update">Автоматическое обновление</label><input id="settings-auto-update" class="switch" type="checkbox" role="switch" checked></div>
+            <div id="settings-auto-update-row" class="setting-row"><label id="settings-auto-update-label" for="settings-auto-update">Загружать обновления автоматически</label><input id="settings-auto-update" class="switch" type="checkbox" role="switch" checked></div>
             <p id="settings-update-mode" class="setting-hint"></p>
             <div class="setting-actions"><button id="settings-check-updates" class="button accent" type="button">Проверить обновления</button></div>
             <div id="settings-update-info" class="update-status hidden">
               <p id="settings-update-message" role="status"></p>
               <progress id="settings-update-progress" class="hidden" aria-label="Загрузка обновления" max="100"></progress>
-              <button id="settings-install-update" class="button primary hidden" type="button">Перезапустить и установить</button>
+              <button id="settings-install-update" class="button primary hidden" type="button">Установить обновление</button>
               <a id="settings-update-release" class="external-link hidden" href="https://github.com/dev-onewizard/dev-onewizard/releases/latest">Скачать обновление</a>
             </div>
           </div>
@@ -147,7 +144,7 @@
             <div class="setting-row"><span>Размер кэша</span><output id="settings-cache-size">0 Б</output></div>
             <div class="setting-actions">
               <button id="settings-clear-cache" class="button accent" type="button">Очистить кэш</button>
-              <button id="settings-reset-all" class="button danger" type="button">Сбросить настройки</button>
+              <button id="settings-reset-all" class="button accent" type="button">Сбросить настройки</button>
             </div>
           </div>
         </section>
@@ -159,11 +156,11 @@
 
   <dialog id="update-modal" class="app-dialog" aria-labelledby="update-title" aria-describedby="update-message">
     <section class="modal-content">
-      <h2 id="update-title">Доступна версия <span id="update-version"></span></h2>
-      <p id="update-message">Обновление загружено. Приложение перезапустится при установке.</p>
+      <h2 id="update-title">Обновить до версии <span id="update-version"></span>?</h2>
+      <p id="update-message">Приложение перезапустится после установки.</p>
       <div class="modal-actions">
-        <button id="update-install-later" class="button" type="button" autofocus>Позже</button>
-        <button id="update-install-now" class="button primary" type="button">Установить</button>
+        <button id="update-install-later" class="button" type="button" autofocus>Отмена</button>
+        <button id="update-install-now" class="button primary" type="button">Обновить</button>
       </div>
     </section>
   </dialog>

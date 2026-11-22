@@ -45,7 +45,6 @@
             api.preferences.onReset(settings => this.render(settings));
             api.cache.onClear(() => this.updateCacheSize());
             api.updates.onStatus(status => this.renderUpdateStatus(status));
-            el('settings-install-update').onclick = () => api.updates.install();
 
             for (const button of themeButtons) {
                 button.onclick = () => this.save({ theme: button.dataset.setTheme });
@@ -167,9 +166,9 @@
             const portable = mode === 'portable';
             el('settings-auto-update-row').classList.toggle('hidden', !installed && !portable);
             el('settings-auto-update-label').textContent = installed
-                ? 'Автоматическое обновление' : 'Проверять обновления автоматически';
+                ? 'Загружать обновления автоматически' : 'Проверять обновления автоматически';
             const help = {
-                installed: 'Новые версии устанавливаются при выходе из приложения.',
+                installed: 'Установка начинается после подтверждения.',
                 portable: 'Обновление переносной версии можно скачать вручную.',
                 development: 'Новую версию можно скачать вручную.',
                 manual: 'Новую версию можно скачать вручную.'

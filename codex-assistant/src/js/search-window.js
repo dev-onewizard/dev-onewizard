@@ -1,8 +1,9 @@
 // search-window.js
 const PAGE_SIZE = 20;
-const searchProject = new URLSearchParams(window.location.search).get('project') === 'russia-online'
-    ? 'russia-online' : 'majestic';
-const isRussiaSearch = searchProject === 'russia-online';
+const localProjectNames = new Map([['gta5rp', 'GTA 5 RP'], ['russia-online', 'Россия Онлайн']]);
+const requestedProject = new URLSearchParams(window.location.search).get('project');
+const projectName = localProjectNames.get(requestedProject);
+const searchProject = projectName ? requestedProject : 'majestic';
 const SearchState = {
     lawsData: [],
     rulesData: {},
@@ -34,19 +35,19 @@ async function initSearchWindow() {
     document.getElementById('hide-search').onclick = () => window.CodexAPI.window.hideSearch();
     window.CodexAPI.server.onChange(serverId => selectSearchServer(serverId, false), searchProject);
 
-    if (isRussiaSearch) {
+    if (projectName) {
         document.documentElement.dataset.project = searchProject;
-        document.getElementById('search-project-name').textContent = 'Россия Онлайн';
+        document.documentElement.setAttribute('data-reference-pending', '');
+        document.getElementById('search-project-name').textContent = projectName;
         document.querySelector('.search-field').hidden = true;
         document.querySelector('.search-filters').hidden = true;
         document.querySelector('.results-heading').hidden = true;
         document.getElementById('results-container').innerHTML =
-            '<div class="empty-state"><p class="empty-state-title">Справочник готовится</p>' +
-            '<p>Можно выбрать сервер «Россия Онлайн».</p></div>';
+            '<div class="empty-state"><p class="empty-state-title">Справочник готовится</p></div>';
         try {
             await Promise.all([setupSettingsSync(), loadServersList()]);
         } catch (error) {
-            console.error('[Search] Could not load Russia Online servers:', error);
+            console.error('[Search] Could not load project servers:', error);
             showError('Не удалось загрузить список серверов.');
         }
         return;
@@ -94,7 +95,7 @@ async function setupSettingsSync() {
     };
     api.preferences.onChange(apply);
     api.preferences.onReset(prefs => {
-        if (isRussiaSearch) {
+        if (projectName) {
             apply(prefs);
             return;
         }
@@ -162,7 +163,7 @@ function selectSearchServer(serverId, save = true) {
         window.CodexAPI.server.select(serverId, searchProject);
         SoundManager.play('select');
     }
-    if (isRussiaSearch) return;
+    if (projectName) return;
     if (SearchState.activeTab === 'laws') loadLaws(serverId);
     else {
         lawRequest++;

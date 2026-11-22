@@ -58,7 +58,7 @@ const api = {
         getCurrent: project => ipcRenderer.invoke('server:getCurrent', project),
         select: (serverId, project) => ipcRenderer.send('server:selected', serverId, project),
         onChange: (callback, project) => subscribe(
-            project === 'russia-online' ? 'server:russia-changed' : 'server:changed', callback),
+            !project || project === 'majestic' ? 'server:changed' : `server:${project}-changed`, callback),
     },
     
     updates: {

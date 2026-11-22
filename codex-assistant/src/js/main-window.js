@@ -8,11 +8,7 @@ const MainState = {
     activeMainTab: 'main'
 };
 
-const projects = {
-    majestic: { name: 'Majestic RP', available: true },
-    gta5rp: { name: 'GTA 5 RP', available: false },
-    'russia-online': { name: 'Россия Онлайн', available: true }
-};
+const projectCards = [...document.querySelectorAll('.project-card')];
 let serverListRequest = 0;
 
 async function initMainWindow() {
@@ -123,9 +119,6 @@ function setupWindowControls() {
 
 function setupProjectChooser() {
     const grid = document.getElementById('project-grid');
-    for (const card of grid.querySelectorAll('.project-card')) {
-        card.querySelector('.project-status').hidden = projects[card.dataset.project].available;
-    }
     grid.addEventListener('click', event => {
         const card = event.target.closest('.project-card');
         if (card) selectProject(card.dataset.project);
@@ -133,18 +126,12 @@ function setupProjectChooser() {
 }
 
 function selectProject(id, save = true) {
-    if (!Object.hasOwn(projects, id)) return;
-    const project = projects[id];
-    if (!project.available) {
-        AppToast.show(project.name + ' — справочник появится позже.', 'info');
-        return;
-    }
-    if (MainState.project === id) return;
+    if (MainState.project === id || !projectCards.some(card => card.dataset.project === id)) return;
     MainState.project = id;
     if (save) window.CodexAPI.project.select(id);
     document.documentElement.dataset.project = id;
 
-    for (const card of document.querySelectorAll('.project-card')) {
+    for (const card of projectCards) {
         card.setAttribute('aria-pressed', String(card.dataset.project === id));
     }
 
@@ -448,7 +435,7 @@ function showUpdateModal(version) {
 }
 
 function setupEventListeners() {
-    for (const project of ['majestic', 'russia-online']) {
+    for (const { dataset: { project } } of projectCards) {
         window.CodexAPI.server.onChange(serverId => {
             if (project !== MainState.project || serverId === MainState.selectedServer) return;
             MainState.selectedServer = serverId;
@@ -459,6 +446,10 @@ function setupEventListeners() {
 
     const modal = document.getElementById('update-modal');
     const close = () => modal.close();
+    document.getElementById('settings-install-update').onclick = async () => {
+        const { state, latest } = await window.CodexAPI.updates.getStatus();
+        if (state === 'downloaded' || state === 'install-error') showUpdateModal(latest);
+    };
     document.getElementById('update-install-now').onclick = () => {
         window.CodexAPI.updates.install();
         close();

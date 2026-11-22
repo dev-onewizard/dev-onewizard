@@ -5,7 +5,10 @@ const path = require('path');
 const fs = require('fs');
 const fetch = require('node-fetch');
 const Analytics = require('./src/js/analytics.js');
-const RUSSIA_SERVERS = require('./assets/servers/russia-online.json');
+const LOCAL_PROJECTS = new Map([
+    ['gta5rp', { configKey: 'gtaServer', servers: require('./assets/servers/gta5rp.json') }],
+    ['russia-online', { configKey: 'russiaServer', servers: require('./assets/servers/russia-online.json') }]
+]);
 
 // ========== ИСТОЧНИК ДАННЫХ ==========
 const DATA_OWNER = 'dev-onewizard';
@@ -125,9 +128,9 @@ function setActiveProject(project) {
     if (searchWindow && !searchWindow.isDestroyed()) searchWindow.destroy();
 }
 
-function broadcast(channel, value) {
+function broadcast(channel, value, except) {
     for (const win of [mainWindow, searchWindow]) {
-        if (win && !win.isDestroyed()) win.webContents.send(channel, value);
+        if (win && !win.isDestroyed() && win.webContents !== except) win.webContents.send(channel, value);
     }
 }
 
@@ -675,7 +678,7 @@ function createSearchWindow(tab) {
     searchWindow.setAlwaysOnTop(true, 'screen-saver');
     searchWindow.setVisibleOnAllWorkspaces(true);
     const query = tab ? { tab } : {};
-    if (activeProject === 'russia-online') query.project = activeProject;
+    if (LOCAL_PROJECTS.has(activeProject)) query.project = activeProject;
     searchWindow.loadFile(path.join(__dirname, 'src', 'search.html'), { query });
     
     if (isDev) {
@@ -885,7 +888,7 @@ function checkAutomatically() {
 function setupAutoUpdater() {
     if (updateMode === 'installed') {
         autoUpdater.autoDownload = true;
-        autoUpdater.autoInstallOnAppQuit = true;
+        autoUpdater.autoInstallOnAppQuit = false;
         autoUpdater.allowPrerelease = false;
         autoUpdater.on('error', error => {
             console.error('[AutoUpdater]', error.message);
@@ -905,10 +908,6 @@ function setupAutoUpdater() {
         autoUpdater.on('update-downloaded', info => {
             downloadedVersion = info.version;
             publishUpdateStatus('downloaded', { latest: downloadedVersion });
-        });
-        // Run before the updater's quit listener, which is registered after the first download.
-        app.on('quit', () => {
-            autoUpdater.autoInstallOnAppQuit = getPreferences().autoUpdate;
         });
     }
     setInterval(checkAutomatically, 60 * 60 * 1000).unref();
@@ -964,7 +963,8 @@ function setupIPCHandlers() {
         const hotkeySet = registerToggleHotkey('Ctrl+Shift+K');
         const saved = updateConfig(config => ({
             ...config, preferences: { ...DEFAULT_PREFS }, toggleSearch: currentHotkey,
-            autoHideEnabled: true, selectedServer: 'new-york-1', russiaServer: RUSSIA_SERVERS[0].id,
+            autoHideEnabled: true, selectedServer: 'new-york-1',
+            ...Object.fromEntries(Array.from(LOCAL_PROJECTS.values(), ({ configKey, servers }) => [configKey, servers[0].id])),
             selectedProject: 'majestic'
         }));
         if (!saved) throw Error('Settings reset failed');
@@ -1113,41 +1113,37 @@ function setupIPCHandlers() {
     
     ipcMain.handle('project:get', () => activeProject);
     ipcMain.on('project:select', (event, project) => {
-        if (event.sender !== mainWindow?.webContents || !['majestic', 'russia-online'].includes(project)) return;
+        if (event.sender !== mainWindow?.webContents ||
+            (project !== 'majestic' && !LOCAL_PROJECTS.has(project))) return;
         setActiveProject(project);
         updateConfig(config => ({ ...config, selectedProject: project }));
     });
     ipcMain.handle('server:list', (_, project) =>
-        project === 'russia-online' ? RUSSIA_SERVERS : fetchServersList());
+        LOCAL_PROJECTS.get(project)?.servers ?? fetchServersList());
     ipcMain.on('server:selected', (event, serverId, project) => {
-        if (project === 'russia-online') {
-            if (!RUSSIA_SERVERS.some(server => server.id === serverId)) return;
-            updateConfig(config => ({ ...config, russiaServer: serverId }));
-            for (const win of [mainWindow, searchWindow]) {
-                if (win && !win.isDestroyed() && event.sender !== win.webContents) {
-                    win.webContents.send('server:russia-changed', serverId);
-                }
+        const local = LOCAL_PROJECTS.get(project);
+        if (local) {
+            if (!local.servers.some(server => server.id === serverId)) return;
+            if (updateConfig(config => ({ ...config, [local.configKey]: serverId }))) {
+                broadcast(`server:${project}-changed`, serverId, event.sender);
             }
             return;
         }
+        if (project !== undefined && project !== 'majestic') return;
         const normalizedId = normalizeServerId(serverId);
         if (!/^[a-z0-9]+(?:-[a-z0-9]+)*-\d+$/.test(normalizedId)) return;
         console.log('[IPC] Server selected:', normalizedId);
         Analytics.trackServerChange(normalizedId);
         updateConfig((config) => ({ ...config, selectedServer: normalizedId }));
         
-        if (mainWindow && !mainWindow.isDestroyed() && event.sender !== mainWindow.webContents) {
-            mainWindow.webContents.send('server:changed', normalizedId);
-        }
-        if (searchWindow && !searchWindow.isDestroyed() && event.sender !== searchWindow.webContents) {
-            searchWindow.webContents.send('server:changed', normalizedId);
-        }
+        broadcast('server:changed', normalizedId, event.sender);
     });
     
     ipcMain.handle('server:getCurrent', (_, project) => {
         const config = readConfig();
-        if (project === 'russia-online') {
-            return RUSSIA_SERVERS.find(server => server.id === config.russiaServer)?.id || RUSSIA_SERVERS[0].id;
+        const local = LOCAL_PROJECTS.get(project);
+        if (local) {
+            return local.servers.find(server => server.id === config[local.configKey])?.id || local.servers[0].id;
         }
         return config.selectedServer || 'new-york-1';
     });
@@ -1218,7 +1214,8 @@ app.whenReady().then(async () => {
     
     currentHotkey = readHotkey();
     autoHideEnabled = readAutoHide();
-    if (readConfig().selectedProject === 'russia-online') activeProject = 'russia-online';
+    const savedProject = readConfig().selectedProject;
+    if (LOCAL_PROJECTS.has(savedProject)) activeProject = savedProject;
     Analytics.startSession();
     
     setupIPCHandlers();
