@@ -397,10 +397,14 @@ function renderUpdates(updates) {
     }
     container.innerHTML = updates.map((update, index) => {
         const version = Utils.escapeHtml(update.version);
+        const fromVersion = Utils.escapeHtml(update.fromVersion);
         const date = Utils.escapeHtml(update.date);
+        const title = version
+            ? (fromVersion ? 'Версии ' + fromVersion + '–' + version : 'Версия ' + version)
+            : date;
         const items = update.items.map(item => '<p>' + Utils.escapeHtml(item) + '</p>').join('');
         return '<article class="release-card' + (index === 0 ? ' release-latest' : '') + '">' +
-            '<header class="release-heading"><h3>' + (version ? 'Версия ' + version : date) + '</h3>' +
+            '<header class="release-heading"><h3>' + title + '</h3>' +
             (index === 0 ? '<span class="release-badge">Свежая</span>' : '') + '</header>' +
             (version ? '<p class="update-date">' + date + '</p>' : '') +
             '<div class="release-notes">' + items + '</div></article>';
