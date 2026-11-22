@@ -483,16 +483,17 @@ function renderUpdates(updates) {
 
 function setupUpdateHandlers() {
     const api = window.CodexAPI.updates;
-    
-    api.onAvailable((version) => {
-        console.log('[Updates] Available:', version);
-    });
-    
-    api.onProgress((progress) => {});
-    
-    api.onDownloaded((version) => {
-        showUpdateModal(version);
-        if (window.SoundManager) SoundManager.play('notification');
+    let notifiedVersion;
+    api.onStatus(({ state, mode, latest }) => {
+        if (latest === notifiedVersion) return;
+        if (state === 'downloaded') {
+            notifiedVersion = latest;
+            showUpdateModal(latest);
+            window.SoundManager?.play('notification');
+        } else if (mode === 'portable' && state === 'available') {
+            notifiedVersion = latest;
+            AppToast.show(`Доступна версия ${latest}. Откройте «Настройки», чтобы перейти к релизу.`);
+        }
     });
 }
 

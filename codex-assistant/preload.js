@@ -59,12 +59,10 @@ const api = {
     
     updates: {
         check: () => ipcRenderer.invoke('updates:check'),
+        getStatus: () => ipcRenderer.invoke('updates:status'),
         history: () => ipcRenderer.invoke('updates:history'),
         install: () => ipcRenderer.send('updates:install'),
-        onAvailable: (cb) => ipcRenderer.on('update-available', (_, v) => cb(v)),
-        onProgress: (cb) => ipcRenderer.on('download-progress', (_, p) => cb(p)),
-        onDownloaded: (cb) => ipcRenderer.on('update-downloaded', (_, v) => cb(v)),
-        onError: (cb) => ipcRenderer.on('update-error', (_, m) => cb(m)),
+        onStatus: (cb) => ipcRenderer.on('updates:status', (_, status) => cb(status)),
     },
     
     app: {

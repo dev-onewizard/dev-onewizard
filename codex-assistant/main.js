@@ -23,8 +23,12 @@ const SERVER_FILE_NAMES = {
 };
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-let updateReady = null;
-let updaterStarted = false;
+const updateMode = isDev ? 'development' :
+    process.platform !== 'win32' ? 'manual' :
+    process.env.PORTABLE_EXECUTABLE_FILE ? 'portable' : 'installed';
+let updateStatus = { state: 'idle', mode: updateMode, current: app.getVersion() };
+let updateCheck = null;
+let downloadedVersion = null;
 
 let mainWindow = null;
 let searchWindow = null;
@@ -131,6 +135,7 @@ function savePreferences(changes, initialize = false) {
     if (!updateConfig(current => ({ ...current, preferences: prefs }))) throw Error('Preferences write failed');
     const state = getPreferences();
     broadcast('preferences:changed', state);
+    if (state.autoUpdate && config.preferences?.autoUpdate === false) checkAutomatically();
     return state;
 }
 
@@ -851,62 +856,74 @@ function registerToggleHotkey(accelerator) {
     }
 }
 
-function setupAutoUpdater() {
-    if (updaterStarted || process.platform !== 'win32' || process.env.PORTABLE_EXECUTABLE_FILE) return;
-    updaterStarted = true;
-    autoUpdater.autoDownload = true;
-    autoUpdater.autoInstallOnAppQuit = false;
-    autoUpdater.allowPrerelease = false;
-    
-    autoUpdater.on('error', (err) => {
-        console.log('[AutoUpdater] Error:', err.message);
-        mainWindow?.webContents.send('update-error', err.message);
-    });
-    
-    autoUpdater.on('update-available', (info) => {
-        console.log('[AutoUpdater] Update available:', info.version);
-        mainWindow?.webContents.send('update-available', info.version);
-    });
-    
-    autoUpdater.on('download-progress', (progress) => {
-        mainWindow?.webContents.send('download-progress', {
-            percent: progress.percent,
-            transferred: progress.transferred,
-            total: progress.total,
-        });
-    });
-    
-    autoUpdater.on('update-downloaded', (info) => {
-        updateReady = info.version;
-        console.log('[AutoUpdater] Update downloaded:', info.version);
-        mainWindow?.webContents.send('update-downloaded', info.version);
-    });
-    
-    const checkForUpdates = () => {
-        if (!updateReady && getPreferences().autoUpdate) {
-            autoUpdater.checkForUpdates().then(result => result?.downloadPromise?.catch(() => {})).catch(() => {});
-        }
-    };
-    setTimeout(checkForUpdates, 3000);
-    setInterval(checkForUpdates, 60 * 60 * 1000).unref();
+function publishUpdateStatus(state, details = {}) {
+    updateStatus = { state, mode: updateMode, current: app.getVersion(), ...details };
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('updates:status', updateStatus);
+    }
+    return updateStatus;
 }
 
-async function checkAppUpdate() {
-    const current = app.getVersion();
-    if (updateReady) {
-        mainWindow?.webContents.send('update-downloaded', updateReady);
-        return { state: 'downloaded', current, latest: updateReady };
+function checkAutomatically() {
+    if (['installed', 'portable'].includes(updateMode) && !downloadedVersion && getPreferences().autoUpdate) {
+        checkAppUpdate();
     }
-    if (updaterStarted) {
+}
+
+function setupAutoUpdater() {
+    if (updateMode === 'installed') {
+        autoUpdater.autoDownload = true;
+        autoUpdater.autoInstallOnAppQuit = true;
+        autoUpdater.allowPrerelease = false;
+        autoUpdater.on('error', error => {
+            console.error('[AutoUpdater]', error.message);
+            if (updateStatus.state === 'installing') {
+                publishUpdateStatus('install-error', { latest: downloadedVersion });
+            }
+        });
+        autoUpdater.on('update-available', info => {
+            publishUpdateStatus('downloading', { latest: info.version });
+        });
+        autoUpdater.on('download-progress', progress => {
+            publishUpdateStatus('downloading', {
+                latest: updateStatus.latest,
+                percent: Math.min(100, Math.max(0, Math.floor(progress.percent)))
+            });
+        });
+        autoUpdater.on('update-downloaded', info => {
+            downloadedVersion = info.version;
+            publishUpdateStatus('downloaded', { latest: downloadedVersion });
+        });
+        // Run before the updater's quit listener, which is registered after the first download.
+        app.on('quit', () => {
+            autoUpdater.autoInstallOnAppQuit = getPreferences().autoUpdate;
+        });
+    }
+    setTimeout(checkAutomatically, 3000).unref();
+    setInterval(checkAutomatically, 60 * 60 * 1000).unref();
+}
+
+function checkAppUpdate() {
+    if (downloadedVersion || updateCheck) return updateStatus;
+    publishUpdateStatus('checking');
+    updateCheck = checkGitHubRelease()
+        .catch(error => {
+            console.error('[AutoUpdater]', error.message);
+            publishUpdateStatus(updateStatus.state === 'downloading' ? 'download-error' : 'check-error');
+        })
+        .finally(() => { updateCheck = null; });
+    return updateStatus;
+}
+
+async function checkGitHubRelease() {
+    if (updateMode === 'installed') {
         const result = await autoUpdater.checkForUpdates();
         if (!result) throw Error('Update provider unavailable');
-        result.downloadPromise?.catch(() => {});
-        return {
-            state: result.isUpdateAvailable ? 'downloading' : 'current',
-            current,
-            latest: result.updateInfo.version
-        };
+        if (result.isUpdateAvailable) await result.downloadPromise;
+        else publishUpdateStatus('current');
+        return;
     }
+
     const response = await fetch(RELEASES_PAGE, { timeout: 8000, redirect: 'manual' });
     const location = response.headers.get('location');
     if (response.status !== 302 || !location) throw Error('GitHub HTTP ' + response.status);
@@ -914,9 +931,9 @@ async function checkAppUpdate() {
     const latest = target.origin === 'https://github.com' &&
         /^\/dev-onewizard\/dev-onewizard\/releases\/tag\/v?(\d+\.\d+\.\d+)$/.exec(target.pathname)?.[1];
     if (!latest) throw Error('Invalid stable release version');
-    const installed = current.split('.').map(Number);
+    const installed = app.getVersion().split('.').map(Number);
     const difference = latest.split('.').map((part, index) => Number(part) - installed[index]).find(value => value !== 0);
-    return { state: difference > 0 ? 'available' : 'current', current, latest };
+    publishUpdateStatus(difference > 0 ? 'available' : 'current', { latest });
 }
 
 function openHttpsLink(url) {
@@ -942,6 +959,7 @@ function setupIPCHandlers() {
         autoHideEnabled = true;
         lastSearchBounds = null;
         broadcast('preferences:reset', { ...getPreferences(), hotkeySet });
+        checkAutomatically();
         if (searchWindow?.isVisible()) resetInactivityTimer();
         return { hotkeySet };
     });
@@ -962,10 +980,12 @@ function setupIPCHandlers() {
         return true;
     });
     ipcMain.handle('updates:check', () => checkAppUpdate());
+    ipcMain.handle('updates:status', () => updateStatus);
     ipcMain.handle('updates:history', () => require('./releases.json').updates);
     ipcMain.on('updates:install', (event) => {
-        if (!updateReady || event.sender !== mainWindow?.webContents) return;
-        updateReady = null;
+        if (!downloadedVersion || updateStatus.state === 'installing' ||
+            event.sender !== mainWindow?.webContents) return;
+        publishUpdateStatus('installing', { latest: downloadedVersion });
         autoUpdater.quitAndInstall(false, true);
     });
     ipcMain.on('window:minimize', () => mainWindow?.minimize());

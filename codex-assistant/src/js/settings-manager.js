@@ -56,16 +56,8 @@
             api.preferences.onChange(settings => this.render(settings));
             api.preferences.onReset(settings => this.render(settings));
             api.cache.onClear(() => this.updateCacheSize());
-            api.updates.onDownloaded(version => {
-                if (!el('settings-update-info').classList.contains('hidden')) {
-                    el('settings-update-info').textContent = `Версия ${version} готова к установке.`;
-                }
-            });
-            api.updates.onError(() => {
-                if (!el('settings-update-info').classList.contains('hidden')) {
-                    el('settings-update-info').textContent = 'Не удалось получить обновление. Попробуйте ещё раз.';
-                }
-            });
+            api.updates.onStatus(status => this.renderUpdateStatus(status));
+            el('settings-install-update').onclick = () => api.updates.install();
 
             el('settings-theme-toggle').onclick = () => {
                 const theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
@@ -101,6 +93,7 @@
             }
             this.updateVersionInfo();
             this.updateCacheSize();
+            this.renderUpdateStatus(await api.updates.getStatus());
         },
 
         bindSlider(id, key) {
@@ -174,34 +167,48 @@
         },
 
         async checkForUpdates() {
-            const button = el('settings-check-updates');
-            const status = el('settings-update-info');
-            button.disabled = true;
-            status.classList.remove('hidden');
-            status.textContent = 'Проверяем GitHub Releases…';
             try {
-                const { state, current, latest } = await api.updates.check();
-                if (state === 'current') {
-                    status.textContent = `Обновлений нет. Установлена версия ${current}.`;
-                } else if (state === 'available') {
-                    status.textContent = `Доступна версия ${latest}. `;
-                    const link = document.createElement('a');
-                    link.href = 'https://github.com/dev-onewizard/dev-onewizard/releases/latest';
-                    link.textContent = 'Открыть релиз';
-                    link.onclick = event => {
-                        event.preventDefault();
-                        api.utils.openExternal(link.href);
-                    };
-                    status.append(link);
-                } else {
-                    status.textContent = state === 'downloaded' ? `Версия ${latest} готова к установке.` :
-                        `Загружается версия ${latest}…`;
-                }
+                await api.updates.check();
+                this.renderUpdateStatus(await api.updates.getStatus());
             } catch {
-                status.textContent = 'Не удалось проверить обновления. Попробуйте ещё раз.';
-            } finally {
-                button.disabled = false;
+                AppToast.show('Не удалось проверить обновления', 'error');
             }
+        },
+
+        renderUpdateStatus({ state, mode, current, latest, percent }) {
+            const installed = mode === 'installed';
+            const portable = mode === 'portable';
+            el('settings-auto-update-row').classList.toggle('hidden', !installed && !portable);
+            el('settings-auto-update-label').textContent = installed
+                ? 'Автоматическое обновление' : 'Проверять обновления автоматически';
+            const help = {
+                installed: 'Новые версии скачиваются с GitHub и устанавливаются при выходе.',
+                portable: 'Переносную версию можно скачать на GitHub. Для автоустановки используйте установщик.',
+                development: 'Запуск из исходников. Готовую сборку можно скачать на GitHub.',
+                manual: 'Готовую сборку можно скачать на GitHub.'
+            };
+            el('settings-update-mode').textContent = help[mode];
+
+            const messages = {
+                checking: 'Проверяем GitHub Releases…',
+                current: `Обновлений нет. Текущая версия ${current}.`,
+                available: `На GitHub доступна версия ${latest}.`,
+                downloading: `Загружается версия ${latest}${percent === undefined ? '…' : ` — ${percent}%`}`,
+                downloaded: `Версия ${latest} готова к установке.`,
+                installing: `Запускается установка версии ${latest}…`,
+                'check-error': 'Не удалось проверить обновления на GitHub. Попробуйте ещё раз.',
+                'download-error': 'Не удалось скачать обновление. Попробуйте ещё раз.',
+                'install-error': 'Не удалось запустить установку. Попробуйте ещё раз.'
+            };
+            el('settings-update-info').classList.toggle('hidden', state === 'idle');
+            el('settings-update-message').textContent = messages[state] || '';
+            el('settings-check-updates').disabled = ['checking', 'downloading', 'installing'].includes(state);
+            el('settings-install-update').classList.toggle('hidden', !['downloaded', 'install-error'].includes(state));
+            el('settings-update-release').classList.toggle('hidden', !['available', 'check-error', 'download-error', 'install-error'].includes(state));
+            const progress = el('settings-update-progress');
+            progress.classList.toggle('hidden', state !== 'downloading');
+            if (percent === undefined) progress.removeAttribute('value');
+            else progress.value = percent;
         }
     };
     window.SettingsManager = manager;
