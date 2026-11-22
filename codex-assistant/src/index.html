@@ -16,48 +16,35 @@
         <button id="tab-settings" type="button" aria-pressed="false">Настройки</button>
       </nav>
       <div class="window-controls">
-        <button id="minimize-button" class="icon-button window-control" type="button" aria-label="Свернуть" title="Свернуть">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>
-        </button>
-        <button id="close-button" class="icon-button window-control" type="button" aria-label="Закрыть" title="Закрыть">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
-        </button>
+        <button id="minimize-button" class="icon-button window-control" type="button" aria-label="Свернуть" data-tooltip="Свернуть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9c.852 0 1.297 .986 .783 1.623l-.076 .084l-6 6a1 1 0 0 1 -1.32 .083l-.094 -.083l-6 -6l-.083 -.094l-.054 -.077l-.054 -.096l-.017 -.036l-.027 -.067l-.032 -.108l-.01 -.053l-.01 -.06l-.004 -.057v-.118l.005 -.058l.009 -.06l.01 -.052l.032 -.108l.027 -.067l.07 -.132l.065 -.09l.073 -.081l.094 -.083l.077 -.054l.096 -.054l.036 -.017l.067 -.027l.108 -.032l.053 -.01l.06 -.01l.057 -.004l12.059 -.002z"/></svg></button>
+        <button id="close-button" class="icon-button window-control" type="button" aria-label="Закрыть" data-tooltip="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.707 5.293l5.293 5.292l5.293 -5.292a1 1 0 0 1 1.414 1.414l-5.292 5.293l5.292 5.293a1 1 0 0 1 -1.414 1.414l-5.293 -5.292l-5.293 5.292a1 1 0 1 1 -1.414 -1.414l5.292 -5.293l-5.292 -5.293a1 1 0 0 1 1.414 -1.414"/></svg></button>
       </div>
     </header>
 
     <main id="main-content" class="home-view">
-      <section id="project-overview" class="project-overview" aria-labelledby="home-title">
-        <h1 id="home-title">Выбери проект</h1>
-        <p class="page-description">Законы и правила для ролевых серверов</p>
+      <section class="project-overview" aria-labelledby="home-title">
+        <h1 id="home-title">Проекты</h1>
         <div id="project-grid" class="project-grid">
-          <button class="project-card" type="button" data-project="majestic">
+          <button class="project-card" type="button" data-project="majestic" aria-pressed="true">
             <span class="project-art"><img src="../assets/projects/majestic.png" alt=""></span>
-            <span class="project-caption"><strong>Majestic RP</strong><span class="project-arrow" aria-hidden="true">↗</span></span>
-            <span class="project-description">Законы и правила</span>
+            <strong>Majestic RP</strong>
+            <span class="project-selection" aria-hidden="true"></span>
           </button>
-          <button class="project-card" type="button" data-project="gta5rp">
+          <button class="project-card" type="button" data-project="gta5rp" aria-pressed="false">
             <span class="project-art"><img src="../assets/projects/gta5rp.png" alt=""></span>
-            <span class="project-caption"><strong>GTA 5 RP</strong><span class="project-status">Скоро</span></span>
+            <strong>GTA 5 RP</strong>
+            <span class="project-status">Скоро</span>
           </button>
-          <button class="project-card" type="button" data-project="russia-online">
+          <button class="project-card" type="button" data-project="russia-online" aria-pressed="false">
             <span class="project-art"><img src="../assets/projects/russia-online.png" alt=""></span>
-            <span class="project-caption"><strong>Россия Онлайн</strong><span class="project-status">Скоро</span></span>
+            <strong>Россия Онлайн</strong>
+            <span class="project-status">Скоро</span>
           </button>
         </div>
-      </section>
-      <section id="project-detail" class="project-detail hidden" aria-labelledby="project-title">
-        <button id="back-projects" class="back-button" type="button">← Все проекты</button>
-        <div class="project-heading">
-          <div>
-            <h1 id="project-title" tabindex="-1"></h1>
-            <p id="project-description" class="page-description"></p>
-          </div>
-          <div class="project-art"><img id="project-logo" alt=""></div>
-        </div>
-        <div id="majestic-controls" class="project-controls hidden">
-          <div class="project-fields">
-          <div class="field">
-            <label for="server-selector-button">Игровой сервер</label>
+        <p id="project-status" class="project-message hidden" role="status"></p>
+        <div class="project-controls">
+          <div id="majestic-controls" class="field">
+            <label for="server-selector-button">Сервер</label>
             <div id="server-selector" class="picker">
               <button id="server-selector-button" class="picker-button" type="button" aria-expanded="false" aria-controls="server-dropdown" disabled>
                 <span class="server-name"><span id="server-icon" class="server-icon"></span><span id="server-text">Загрузка…</span></span>
@@ -67,35 +54,29 @@
             </div>
           </div>
           <div class="field">
-            <label for="hotkey-editor">Горячая клавиша</label>
-            <button id="hotkey-editor" class="hotkey-editor" type="button" title="Изменить горячую клавишу"><kbd id="hotkey-display">Ctrl+Shift+K</kbd></button>
-          </div>
-          </div>
-          <div class="project-actions">
-            <button id="open-search" class="button primary" type="button">Законы <span aria-hidden="true">↗</span></button>
-            <button id="open-rules" class="button secondary-action" type="button">Правила <span aria-hidden="true">↗</span></button>
-          </div>
-          <div class="project-meta">
-            <span id="update-indicator" class="data-status hidden"><span id="last-update-text"></span></span>
-            <a class="external-link" href="https://github.com/dev-onewizard/majestic-laws-db">Источник данных</a>
+            <label for="hotkey-editor">Горячая клавиша поиска</label>
+            <button id="hotkey-editor" class="hotkey-editor" type="button"><kbd id="hotkey-display">Ctrl+Shift+K</kbd></button>
           </div>
         </div>
+        <button id="open-search" class="button primary" type="button">Открыть поиск <span aria-hidden="true">↗</span></button>
       </section>
-      <footer class="home-footer">
+      <aside class="home-sidebar" aria-labelledby="history-title">
+        <h2 id="history-title">Что нового</h2>
+        <div id="updates-list" class="updates-list"></div>
         <nav class="social-links" aria-label="Ссылки">
-          <a id="link-telegram" href="https://t.me/one1_wizard" class="icon-button link-icon" aria-label="Telegram" title="Telegram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 3.4 2.8 10.7c-1.1.4-1.1 1.1-.2 1.4l4.8 1.5 10.9-6.9c.5-.3.9-.1.5.2l-8.8 8.2-.3 4.3c.5 0 .7-.2 1-.5l2.3-2.2 4.9 3.6c.9.5 1.4.2 1.6-.8l3.2-15c.3-1.1-.4-1.6-1.1-1.1Z"/></svg></a>
-          <a id="link-github" href="https://github.com/dev-onewizard/dev-onewizard/tree/main/codex-assistant" class="icon-button link-icon" aria-label="GitHub" title="GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg></a>
-          <a id="link-vk" href="https://vk.com/wizard_dev" class="icon-button link-icon" aria-label="ВКонтакте" title="ВКонтакте"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M15.684 0H8.316C2.825 0 0 2.825 0 8.316v7.368C0 21.175 2.825 24 8.316 24h7.368C21.175 24 24 21.175 24 15.684V8.316C24 2.825 21.175 0 15.684 0zm3.519 16.842h-1.895c-.557 0-.744-.456-1.759-1.471-.886-.886-1.282-1.015-1.505-1.015-.307 0-.393.086-.393.5v1.271c0 .358-.114.557-1.028.557-1.5 0-3.158-.914-4.327-2.628-1.5-1.957-1.928-3.416-1.928-3.73 0-.2.072-.386.5-.386h1.9c.372 0 .515.2.657.672.715 2.128 1.9 3.987 2.4 3.987.186 0 .272-.1.272-.643v-2.5c-.058-1.086-.636-1.172-.636-1.558 0-.186.158-.386.415-.386h2.915c.358 0 .472.2.472.672v3.473c0 .357.1.486.272.486.222 0 .544-.215 1.258-.944.7-.715 1.214-1.786 1.214-1.786.1-.172.258-.343.615-.343h1.9c.586 0 .715.3.558.743-.308.986-2.014 3.072-2.014 3.072-.157.23-.2.343 0 .615.143.215.643.7.986 1.1.572.65 1.028 1.214 1.15 1.6.164.486-.072.858-.558.858z"/></svg></a>
-          <a id="donate" href="https://www.donationalerts.com/r/wizard_dev" class="icon-button link-icon" aria-label="Поддержать проект" title="Поддержать проект"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></a>
-        </nav>
-      </footer>
+          <a id="link-telegram" href="https://t.me/one1_wizard" class="icon-button link-icon" aria-label="Telegram" data-tooltip="Telegram"><span class="social-mark social-telegram" aria-hidden="true"></span></a>
+          <a id="link-github" href="https://github.com/dev-onewizard/dev-onewizard/tree/main/codex-assistant" class="icon-button link-icon" aria-label="GitHub" data-tooltip="GitHub"><span class="social-mark social-github" aria-hidden="true"></span></a>
+          <a id="link-vk" href="https://vk.com/wizard_dev" class="icon-button link-icon" aria-label="ВКонтакте" data-tooltip="ВКонтакте"><span class="social-mark social-vk" aria-hidden="true"></span></a>
+          <a id="donate" href="https://www.donationalerts.com/r/wizard_dev" class="icon-button link-icon" aria-label="Поддержать проект" data-tooltip="Поддержать проект"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></a>
+ </nav>
+      </aside>
     </main>
 
     <main id="settings-content" class="settings-view hidden">
       <div class="settings-heading"><h1>Настройки</h1><span class="version-label">Версия <span id="settings-current-version">—</span></span></div>
       <div class="settings-grid">
         <section class="settings-card">
-          <h2>Оформление</h2>
+          <h2>Окно поиска</h2>
           <div class="setting-row"><span>Цветовая тема</span><button id="settings-theme-toggle" class="button" type="button"><span id="settings-theme-text">Тёмная</span></button></div>
           <div class="setting-row"><label for="settings-opacity-slider">Прозрачность поиска</label>
             <div class="range-control"><input id="settings-opacity-slider" type="range" min="0" max="25" value="0"><output id="settings-opacity-value" for="settings-opacity-slider">0%</output></div>
@@ -121,24 +102,21 @@
             <p id="settings-update-message" role="status"></p>
             <progress id="settings-update-progress" class="hidden" aria-label="Загрузка обновления" max="100"></progress>
             <button id="settings-install-update" class="button primary hidden" type="button">Перезапустить и установить</button>
-            <a id="settings-update-release" class="external-link hidden" href="https://github.com/dev-onewizard/dev-onewizard/releases/latest">Открыть релиз на GitHub</a>
+            <a id="settings-update-release" class="external-link hidden" href="https://github.com/dev-onewizard/dev-onewizard/releases/latest">Скачать обновление</a>
           </div>
         </section>
 
         <section class="settings-card">
-          <h2>Данные</h2>
+          <h2>Хранилище</h2>
           <div class="setting-row"><span>Размер кэша</span><output id="settings-cache-size">0 Б</output></div>
-          <p class="setting-hint"><a class="external-link" href="https://github.com/dev-onewizard/majestic-laws-db/tree/main">База законов и правил</a></p>
+
           <div class="setting-actions">
             <button id="settings-clear-cache" class="button" type="button">Очистить кэш</button>
             <button id="settings-reset-all" class="button danger" type="button">Сбросить настройки</button>
           </div>
         </section>
       </div>
-      <details class="settings-history">
-        <summary>Что нового</summary>
-        <div id="updates-list" class="updates-list"></div>
-      </details>
+
     </main>
   </div>
 

@@ -34,10 +34,6 @@ async function initSearchWindow() {
     setupServerSelector();
     setupActivityTracking();
     document.getElementById('hide-search').onclick = () => window.CodexAPI.window.hideSearch();
-    document.getElementById('rules-source').onclick = event => {
-        event.preventDefault();
-        window.CodexAPI.utils.openExternal(event.currentTarget.href);
-    };
     window.CodexAPI.server.onChange(serverId => selectSearchServer(serverId, false));
     let requestedTab = new URLSearchParams(window.location.search).get('tab');
     let ready = false;
@@ -477,7 +473,6 @@ function selectTab(tab) {
     }
     document.getElementById('search-input').placeholder = laws ? 'Поиск по законам' : 'Поиск по правилам';
     document.getElementById('search-server-selector').classList.toggle('hidden', !laws);
-    document.getElementById('rules-source').classList.toggle('hidden', laws);
     SoundManager.play('toggle');
 }
 
@@ -546,6 +541,8 @@ const articleFields = [
 ];
 const penaltyIcon = '<svg class="penalty-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.1 1.8a1 1 0 0 1 1.8 0l5.7 10.6a1 1 0 0 1-.9 1.5H2.3a1 1 0 0 1-.9-1.5L7.1 1.8zM7.4 5v4h1.2V5H7.4zm0 5.4v1.2h1.2v-1.2H7.4z" fill-rule="evenodd"/></svg>';
 
+const copyIcon = '<svg class="copy-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 7a3 3 0 0 1 3 3v9a3 3 0 0 1 -3 3h-9a3 3 0 0 1 -3 -3v-9a3 3 0 0 1 3 -3z"/><path d="M14 2a3 3 0 0 1 3 2.999l-7 .001a5 5 0 0 0 -5 5l-.001 7l-.175 -.005a3 3 0 0 1 -2.824 -2.995v-9a3 3 0 0 1 3 -3z"/></svg>';
+
 function buildResult(item, type) {
     const sectionKey = type === 'laws' ? 'section' : 'subcategory';
     const section = item[sectionKey];
@@ -555,7 +552,7 @@ function buildResult(item, type) {
     const highlight = value => Utils.highlightText(value, SearchState.highlightPattern);
     let html = '<article class="result-item"><div class="result-header">' +
         '<button type="button" class="code-badge" data-code="' + code + '" data-' + sectionKey + '="' +
-        Utils.escapeHtml(section) + '" title="Скопировать номер">' + label + ' ' + code + '</button>' +
+        Utils.escapeHtml(section) + '" aria-label="Скопировать ' + label + ' ' + code + '">' + label + ' ' + code + copyIcon + '</button>' +
         '<p class="result-title">' + highlight(item.title) + '</p></div>';
 
     for (const [field, fieldLabel] of articleFields) {

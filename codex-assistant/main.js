@@ -723,22 +723,21 @@ function toggleSearchWindow() {
 }
 
 function openSearchWindow(tab) {
-    if (isEditingHotkey || (tab !== 'laws' && tab !== 'rules')) return;
+    if (isEditingHotkey || (tab !== undefined && tab !== 'laws' && tab !== 'rules')) return;
     if (!searchWindow) {
         createSearchWindow(tab);
         return;
     }
 
     const target = searchWindow;
-    const selectTab = () => {
-        if (!target.isDestroyed()) target.webContents.send('window:select-search-tab', tab);
-    };
     if (target.webContents.isLoading()) {
-        target.webContents.once('did-finish-load', selectTab);
-    } else {
-        selectTab();
-        showSearchWindow();
+        if (tab) target.webContents.once('did-finish-load', () => {
+            if (!target.isDestroyed()) target.webContents.send('window:select-search-tab', tab);
+        });
+        return;
     }
+    if (tab) target.webContents.send('window:select-search-tab', tab);
+    showSearchWindow();
 }
 
 // ========== СИСТЕМА ГОРЯЧИХ КЛАВИШ ==========

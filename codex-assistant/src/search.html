@@ -11,9 +11,7 @@
   <div class="app-frame search-frame">
     <header class="titlebar search-titlebar">
       <div class="brand"><img class="brand-mark" src="../assets/Icon/icon.png" alt=""><span>Majestic RP</span></div>
-      <button id="hide-search" class="icon-button window-control" type="button" aria-label="Скрыть поиск" title="Скрыть поиск">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
-      </button>
+      <button id="hide-search" class="icon-button window-control" type="button" aria-label="Скрыть поиск" data-tooltip="Скрыть поиск"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.707 5.293l5.293 5.292l5.293 -5.292a1 1 0 0 1 1.414 1.414l-5.292 5.293l5.292 5.293a1 1 0 0 1 -1.414 1.414l-5.293 -5.292l-5.293 5.292a1 1 0 1 1 -1.414 -1.414l5.292 -5.293l-5.292 -5.293a1 1 0 0 1 1.414 -1.414"/></svg></button>
     </header>
 
     <main class="search-view">
@@ -21,17 +19,24 @@
         <div class="search-field">
           <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
           <input id="search-input" type="search" aria-label="Поиск по справочнику" placeholder="Поиск по законам" autocomplete="off" autofocus>
-          <button id="clear-search" class="icon-button clear-search hidden" type="button" aria-label="Очистить запрос" title="Очистить запрос">
+          <button id="clear-search" class="icon-button clear-search hidden" type="button" aria-label="Очистить запрос" data-tooltip="Очистить запрос">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg>
           </button>
         </div>
+        <div id="search-server-selector" class="picker search-server">
+          <button id="search-server-button" class="picker-button" type="button" aria-expanded="false" aria-controls="search-server-dropdown" disabled>
+            <span class="server-name"><span id="search-server-icon" class="server-icon"></span><span id="search-server-text">Загрузка…</span></span>
+            <span class="chevron" aria-hidden="true"></span>
+          </button>
+          <div id="search-server-dropdown" class="dropdown hidden"><div id="search-servers-list"></div></div>
+        </div>
+      </div>
+
+      <div class="search-filters">
         <nav class="segmented search-tabs" aria-label="База поиска">
           <button id="tab-laws" class="active" type="button" aria-pressed="true">Законы</button>
           <button id="tab-rules" type="button" aria-pressed="false">Правила</button>
         </nav>
-      </div>
-
-      <div class="search-filters">
         <div id="laws-filters" class="filters-group" aria-label="Разделы законов"></div>
         <div id="rules-filters" class="filters-group hidden" aria-label="Категории правил">
           <button class="filter-button active" type="button" data-cat="all">Все</button>
@@ -46,13 +51,6 @@
             </div>
           </div>
         </div>
-        <div id="search-server-selector" class="picker search-server">
-          <button id="search-server-button" class="picker-button" type="button" aria-expanded="false" aria-controls="search-server-dropdown" disabled>
-            <span class="server-name"><span id="search-server-icon" class="server-icon"></span><span id="search-server-text">Загрузка…</span></span>
-            <span class="chevron" aria-hidden="true"></span>
-          </button>
-          <div id="search-server-dropdown" class="dropdown hidden"><div id="search-servers-list"></div></div>
-        </div>
       </div>
 
       <div class="results-heading"><h1>Результаты</h1><span id="result-count" role="status"></span></div>
@@ -63,7 +61,7 @@
 
     <footer class="search-footer">
       <label class="auto-hide-label"><input type="checkbox" id="auto-hide-checkbox" class="switch" role="switch" checked> Автоскрытие</label>
-      <a id="rules-source" class="external-link hidden" href="https://github.com/dev-onewizard/majestic-laws-db/tree/main/rules">Источник правил</a>
+
       <div class="range-control"><label for="opacity-slider">Прозрачность</label>
         <input id="opacity-slider" type="range" min="0" max="25" value="0"><output id="opacity-value" for="opacity-slider">0%</output>
       </div>

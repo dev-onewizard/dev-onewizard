@@ -4,10 +4,7 @@ const MainState = {
     selectedServer: '',
     currentHotkey: 'Ctrl+Shift+K',
     isEditing: false,
-    lastUpdateDate: null,
-    activeMainTab: 'main',
-    activeProject: null,
-    majesticLoad: null
+    activeMainTab: 'main'
 };
 
 const projects = {
@@ -22,6 +19,7 @@ async function initMainWindow() {
     setupWindowControls();
     setupMainTabs();
     setupProjectChooser();
+    selectProject('majestic');
     setupServerDropdown();
     
     setupEventListeners();
@@ -38,10 +36,9 @@ async function initMainWindow() {
         MainState.selectedServer = 'new-york-1';
         updateServerButton();
         renderServersList();
-        if (MainState.activeProject === 'majestic') loadServerData(MainState.selectedServer);
     });
-    await loadUpdatesHistory();
     loadHotkey();
+    await Promise.all([loadUpdatesHistory(), loadServers().then(loadSelectedServer)]);
     console.log('[Main] Ready');
 }
 
@@ -57,7 +54,6 @@ function setupMainTabs() {
     }
     
     tabMain.addEventListener('click', () => {
-        showProjectOverview();
         if (MainState.activeMainTab === 'main') return;
         
         MainState.activeMainTab = 'main';
@@ -93,8 +89,7 @@ function setupMainTabs() {
 }
 
 function setupWindowControls() {
-    document.getElementById('open-search').onclick = () => window.CodexAPI.window.openSearch('laws');
-    document.getElementById('open-rules').onclick = () => window.CodexAPI.window.openSearch('rules');
+    document.getElementById('open-search').onclick = () => window.CodexAPI.window.openSearch();
     document.getElementById('minimize-button')?.addEventListener('click', () => {
         window.CodexAPI.window.minimize();
         if (window.SoundManager) SoundManager.play('toggle');
@@ -106,53 +101,26 @@ function setupWindowControls() {
 }
 
 function setupProjectChooser() {
-    const grid = document.getElementById('project-grid');
-    grid.addEventListener('click', event => {
+    document.getElementById('project-grid').addEventListener('click', event => {
         const card = event.target.closest('.project-card');
-        if (card) openProject(card.dataset.project);
+        if (card) selectProject(card.dataset.project);
     });
-    document.getElementById('back-projects').onclick = () => {
-        const previous = MainState.activeProject;
-        showProjectOverview();
-        grid.querySelector('[data-project="' + previous + '"]')?.focus();
-    };
 }
 
-function showProjectOverview() {
-    MainState.activeProject = null;
-    delete document.documentElement.dataset.project;
-    document.getElementById('project-detail').classList.add('hidden');
-    document.getElementById('project-overview').classList.remove('hidden');
-}
-
-function openProject(id) {
+function selectProject(id) {
     if (!Object.hasOwn(projects, id)) return;
     const project = projects[id];
-    MainState.activeProject = id;
     document.documentElement.dataset.project = id;
-    document.getElementById('project-overview').classList.add('hidden');
-    document.getElementById('project-detail').classList.remove('hidden');
-    document.getElementById('majestic-controls').classList.toggle('hidden', !project.available);
 
-    const heading = document.getElementById('project-title');
-    heading.textContent = project.name;
-    document.getElementById('project-logo').src = '../assets/projects/' + id + '.png';
-    document.getElementById('project-description').textContent = project.available
-        ? 'Законы и правила проекта'
-        : 'Скоро здесь появятся законы и правила проекта.';
-    heading.focus();
-    if (!project.available) return;
-
-    if (!MainState.majesticLoad) {
-        MainState.majesticLoad = loadServers().then(() => {
-            if (!MainState.servers.length) {
-                MainState.majesticLoad = null;
-                return;
-            }
-            return loadSelectedServer();
-        });
+    for (const card of document.querySelectorAll('.project-card')) {
+        card.setAttribute('aria-pressed', String(card.dataset.project === id));
     }
-    window.CodexAPI.window.openSearch('laws');
+
+    const hint = document.getElementById('project-status');
+    hint.classList.toggle('hidden', project.available);
+    hint.textContent = project.available ? '' : project.name + ' — справочник появится позже. Горячая клавиша пока открывает поиск Majestic RP.';
+    document.getElementById('majestic-controls').classList.toggle('hidden', !project.available);
+    document.getElementById('open-search').classList.toggle('hidden', !project.available);
 }
 
 async function loadServers() {
@@ -206,9 +174,6 @@ async function loadSelectedServer() {
     
     updateServerButton();
     renderServersList();
-    if (MainState.selectedServer) {
-        loadServerData(MainState.selectedServer);
-    }
 }
 
 function updateServerButton() {
@@ -250,32 +215,7 @@ function selectServer(serverId) {
     renderServersList();
     
     window.CodexAPI.server.select(serverId);
-    
-    loadServerData(serverId);
-}
 
-async function loadServerData(serverId) {
-    try {
-        const data = await window.CodexAPI.laws.getServerData(serverId);
-        if (serverId !== MainState.selectedServer) return;
-        MainState.lastUpdateDate = data?.updatedAt || null;
-        updateLastUpdateDate(MainState.lastUpdateDate);
-    } catch (error) {
-        console.warn('[Main] Data unavailable:', error);
-    }
-}
-
-function updateLastUpdateDate(timestamp) {
-    const indicator = document.getElementById('update-indicator');
-    const lastUpdate = document.getElementById('last-update-text');
-    
-    if (!indicator || !lastUpdate) return;
-    
-    indicator.classList.toggle('hidden', !timestamp);
-    if (timestamp) {
-        const date = new Date(timestamp);
-        lastUpdate.textContent = `Последнее изменение: ${date.toLocaleDateString('ru-RU')}`;
-}
 }
 
 function loadHotkey() {
@@ -455,25 +395,20 @@ async function loadUpdatesHistory() {
 
 function renderUpdates(updates) {
     const container = document.getElementById('updates-list');
-    if (!container) return;
-    
     if (!updates.length) {
-        container.innerHTML = '<div class="empty-state">История пуста</div>';
+        container.textContent = 'История пока пуста';
         return;
     }
-    
-    container.innerHTML = '<div class="updates-timeline">' + 
-        updates.map(update => `
-            <div class="update-item">
-                <div class="update-content">
-                    <div class="update-date">${Utils.escapeHtml(update.date)}</div>
-                    <ul class="update-items">
-                        ${update.items.map(item => `<li class="update-item-text">${Utils.escapeHtml(item)}</li>`).join('')}
-                    </ul>
-                </div>
-            </div>
-        `).join('') + '</div>';
-    
+    container.innerHTML = updates.map((update, index) => {
+        const version = Utils.escapeHtml(update.version);
+        const date = Utils.escapeHtml(update.date);
+        const items = update.items.map(item => '<li>' + Utils.escapeHtml(item) + '</li>').join('');
+        return '<details class="update-item" name="release-history"' + (index === 0 ? ' open' : '') + '>' +
+            '<summary><span class="update-version">' + (version ? 'Версия ' + version : date) + '</span>' +
+            (version ? '<span class="update-date">' + date + '</span>' : '') +
+            '<span class="chevron" aria-hidden="true"></span></summary>' +
+            '<ul class="update-items">' + items + '</ul></details>';
+    }).join('');
 }
 
 function setupUpdateHandlers() {
@@ -505,7 +440,6 @@ function setupEventListeners() {
         MainState.selectedServer = serverId;
         updateServerButton();
         renderServersList();
-        loadServerData(serverId);
     });
 
     const modal = document.getElementById('update-modal');
