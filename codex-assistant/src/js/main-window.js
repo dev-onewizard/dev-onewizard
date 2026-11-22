@@ -5,7 +5,6 @@ const MainState = {
     currentHotkey: 'Ctrl+Shift+K',
     isEditing: false,
     lastUpdateDate: null,
-    updatesHistory: [],
     activeMainTab: 'main'
 };
 
@@ -17,7 +16,6 @@ async function initMainWindow() {
     
     setupEventListeners();
     setupHotkeyEditor();
-    setupThemeToggle();
     
     if (window.SoundManager) {
         window.SoundManager.init();
@@ -53,11 +51,13 @@ function setupMainTabs() {
         
         MainState.activeMainTab = 'main';
         
-        tabMain.classList.add('active');
+tabMain.classList.add('active');
+        tabMain.setAttribute('aria-pressed', 'true');
         tabSettings.classList.remove('active');
+        tabSettings.setAttribute('aria-pressed', 'false');
         mainContent.classList.remove('hidden');
         settingsContent.classList.add('hidden');
-        
+
         if (window.SoundManager) SoundManager.play('toggle');
     });
     
@@ -67,7 +67,9 @@ function setupMainTabs() {
         MainState.activeMainTab = 'settings';
         
         tabSettings.classList.add('active');
+        tabSettings.setAttribute('aria-pressed', 'true');
         tabMain.classList.remove('active');
+        tabMain.setAttribute('aria-pressed', 'false');
         settingsContent.classList.remove('hidden');
         mainContent.classList.add('hidden');
         
@@ -88,13 +90,6 @@ function setupWindowControls() {
     
     document.getElementById('close-button')?.addEventListener('click', () => {
         window.CodexAPI.window.close();
-    });
-}
-
-function setupThemeToggle() {
-    document.getElementById('theme-toggle')?.addEventListener('click', () => {
-        const theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
-        window.SettingsManager.save({ theme });
     });
 }
 
@@ -119,20 +114,7 @@ async function loadServers() {
 
 function renderServersList() {
     const list = document.getElementById('servers-list');
-    if (!list) return;
-    
-    list.innerHTML = MainState.servers.map(server => {
-        const icon = Utils.getServerIcon(server.id);
-        const selected = server.id === MainState.selectedServer ? 'selected' : '';
-        return `<div class="server-item ${selected}" data-server-id="${server.id}">
-            <span class="server-icon">${icon}</span>
-            <span>${Utils.escapeHtml(server.name)}</span>
-        </div>`;
-    }).join('');
-    
-    list.querySelectorAll('.server-item').forEach(item => {
-        item.addEventListener('click', () => selectServer(item.dataset.serverId));
-    });
+    list.innerHTML = MainState.servers.map(server => Utils.serverOption(server, MainState.selectedServer)).join('');
 }
 
 async function loadSelectedServer() {
@@ -186,16 +168,15 @@ function updateServerButton() {
 function setupServerDropdown() {
     const button = document.getElementById('server-selector-button');
     const dropdown = document.getElementById('server-dropdown');
-    
-    button.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdown.classList.toggle('hidden');
-    });
-    
-    document.addEventListener('click', (e) => {
-        if (!button.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.classList.add('hidden');
-        }
+    const list = document.getElementById('servers-list');
+
+    Utils.bindDropdown(button, dropdown);
+    list.addEventListener('click', event => {
+        const option = event.target.closest('.server-item');
+        if (!option) return;
+        Utils.setDropdown(button, dropdown, false);
+        button.focus();
+        selectServer(option.dataset.serverId);
     });
 }
 
@@ -207,7 +188,6 @@ function selectServer(serverId) {
     
     updateServerButton();
     renderServersList();
-    document.getElementById('server-dropdown')?.classList.add('hidden');
     
     window.CodexAPI.server.select(serverId);
     
@@ -235,20 +215,7 @@ function updateLastUpdateDate(timestamp) {
     if (timestamp) {
         const date = new Date(timestamp);
         lastUpdate.textContent = `Последнее изменение: ${date.toLocaleDateString('ru-RU')}`;
-        indicator.classList.remove('hidden');
-        
-        // Форсируем reflow → transition корректно воспроизведётся с opacity 0 → 1
-        indicator.style.opacity = '0';
-        indicator.style.transition = 'opacity 0.3s ease';
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                indicator.style.opacity = '1';
-                indicator.addEventListener('transitionend', () => {
-                    indicator.style.transition = '';
-                }, { once: true });
-            });
-        });
-    }
+}
 }
 
 function loadHotkey() {
@@ -301,15 +268,6 @@ function startHotkeyEditing() {
     
     editor.classList.add('editing');
     display.textContent = 'Нажмите комбинацию';
-    
-    editor.style.transform = 'scale(1.02)';
-    editor.style.transition = 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)';
-    editor.addEventListener('transitionend', () => {
-        editor.style.transform = 'scale(1)';
-        editor.addEventListener('transitionend', () => {
-            editor.style.transition = '';
-        }, { once: true });
-    }, { once: true });
     
     window.CodexAPI.hotkey.startEditing();
 }
@@ -414,25 +372,13 @@ function showHotkeyError(message) {
     const display = document.getElementById('hotkey-display');
     display.textContent = message;
     
-    display.style.transition = 'color 0.2s ease';
-    display.style.color = 'var(--error-color)';
-    
+display.style.color = 'var(--danger)';
     setTimeout(() => {
         display.style.color = '';
-        display.addEventListener('transitionend', () => {
-            display.style.transition = '';
-            if (MainState.isEditing) display.textContent = 'Нажмите комбинацию';
-        }, { once: true });
+        if (MainState.isEditing && display.textContent === message) display.textContent = 'Нажмите комбинацию';
     }, 1000);
-    
-    if (window.SoundManager) SoundManager.play('error');
-}
 
-function loadAutoHide() {
-    const saved = localStorage.getItem('autoHideEnabled');
-    if (saved !== null) {
-        window.CodexAPI.config.setAutoHide(saved === 'true');
-    }
+    if (window.SoundManager) SoundManager.play('error');
 }
 
 async function loadUpdatesHistory() {
@@ -457,9 +403,8 @@ function renderUpdates(updates) {
     }
     
     container.innerHTML = '<div class="updates-timeline">' + 
-        updates.map((update, i) => `
-            <div class="update-item ${i === updates.length - 1 ? 'last' : ''}">
-                <div class="update-timeline-dot"></div>
+        updates.map(update => `
+            <div class="update-item">
                 <div class="update-content">
                     <div class="update-date">${Utils.escapeHtml(update.date)}</div>
                     <ul class="update-items">
@@ -469,16 +414,6 @@ function renderUpdates(updates) {
             </div>
         `).join('') + '</div>';
     
-    container.style.opacity = '0';
-    container.style.transition = 'opacity 0.3s ease';
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            container.style.opacity = '1';
-            container.addEventListener('transitionend', () => {
-                container.style.transition = '';
-            }, { once: true });
-        });
-    });
 }
 
 function setupUpdateHandlers() {
@@ -499,90 +434,39 @@ function setupUpdateHandlers() {
 
 function showUpdateModal(version) {
     const modal = document.getElementById('update-modal');
-    const versionSpan = document.getElementById('update-version');
-    
-    if (!modal || !versionSpan) return;
-    
-    versionSpan.textContent = version;
+    document.getElementById('update-version').textContent = version;
     modal.classList.remove('hidden');
-    modal.classList.add('show');
-    
-    modal.style.opacity = '0';
-    modal.style.transition = 'opacity 0.3s ease';
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            modal.style.opacity = '1';
-            modal.addEventListener('transitionend', () => {
-                modal.style.transition = '';
-            }, { once: true });
-        });
-    });
+    document.getElementById('update-install-later').focus();
 }
 
 function setupEventListeners() {
-    const unsubscribe = window.CodexAPI.server.onChange((serverId) => {
-        console.log('[Main] Server changed to:', serverId);
+    window.CodexAPI.server.onChange(serverId => {
+        if (serverId === MainState.selectedServer) return;
         MainState.selectedServer = serverId;
         updateServerButton();
         renderServersList();
         loadServerData(serverId);
     });
-    
-    document.getElementById('update-install-now')?.addEventListener('click', () => {
+
+    const modal = document.getElementById('update-modal');
+    const close = () => modal.classList.add('hidden');
+    document.getElementById('update-install-now').onclick = () => {
         window.CodexAPI.updates.install();
-        const modal = document.getElementById('update-modal');
-        modal.style.transition = 'opacity 0.3s ease';
-        modal.style.opacity = '0';
-        modal.addEventListener('transitionend', () => {
-            modal.classList.add('hidden');
-            modal.style.opacity = '';
-            modal.style.transition = '';
-        }, { once: true });
-        if (window.SoundManager) SoundManager.play('select');
+        close();
+        SoundManager.play('select');
+    };
+    document.getElementById('update-install-later').onclick = close;
+    modal.addEventListener('keydown', event => {
+        if (event.key === 'Escape') close();
     });
-    
-    document.getElementById('update-install-later')?.addEventListener('click', () => {
-        const modal = document.getElementById('update-modal');
-        modal.style.transition = 'opacity 0.3s ease';
-        modal.style.opacity = '0';
-        modal.addEventListener('transitionend', () => {
-            modal.classList.add('hidden');
-            modal.style.opacity = '';
-            modal.style.transition = '';
-        }, { once: true });
-        if (window.SoundManager) SoundManager.play('toggle');
-    });
-    
-    document.querySelectorAll('.link-icon, .external-link').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
+
+    for (const link of document.querySelectorAll('.link-icon, .external-link')) {
+        link.addEventListener('click', event => {
+            event.preventDefault();
             window.CodexAPI.utils.openExternal(link.href);
-            
-            link.style.transition = 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)';
-            link.style.transform = 'scale(0.95)';
-            link.addEventListener('transitionend', () => {
-                link.style.transform = '';
-                link.addEventListener('transitionend', () => {
-                    link.style.transition = '';
-                }, { once: true });
-            }, { once: true });
-            
-            if (window.SoundManager) SoundManager.play('click');
+            SoundManager.play('click');
         });
-        
-        link.addEventListener('mouseenter', () => {
-            if (window.SoundManager && SoundManager.soundHover) SoundManager.play('hover');
-        });
-    });
-    
-    document.querySelectorAll('.server-selector-button, .hotkey-editor, .link-icon').forEach(el => {
-        el.addEventListener('mouseenter', () => {
-            el.style.transition = 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)';
-            if (window.SoundManager && SoundManager.soundHover) {
-                SoundManager.play('hover');
-            }
-        });
-    });
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -1,259 +1,150 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;">
-    <title>Codex Assistant — Памятка госслужащего</title>
-    <link rel="stylesheet" href="css/utilities.css">
-    <link rel="stylesheet" href="css/styles.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+  <title>Codex Assistant</title>
+  <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-
-<div class="w-screen h-screen flex flex-col">
-  <div class="w-full h-full rounded-[10px] overflow-hidden border border-[var(--border-color)] bg-primary relative shadow-[0_8px_24px_rgba(0,0,0,0.5)]">
-    <div class="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-6 bg-transparent h-[44px]"
-         style="-webkit-app-region:drag;">
-      <div class="flex items-center h-full flex-1" style="-webkit-app-region:drag;"></div>
-      <div class="flex items-center h-full gap-2 titlebar-right">
-        <div class="flex gap-3 main-tabs no-drag mr-3">
-          <button id="tab-main" class="main-tab active relative px-4 py-1.5 text-[0.9375rem] text-secondary-t bg-transparent border-0 rounded-md cursor-pointer overflow-hidden transition-all duration-300 shimmer hover:text-primary-t hover:bg-tertiary">Главная</button>
-          <button id="tab-settings" class="main-tab relative px-4 py-1.5 text-[0.9375rem] text-secondary-t bg-transparent border-0 rounded-md cursor-pointer overflow-hidden transition-all duration-300 shimmer hover:text-primary-t hover:bg-tertiary">Настройки</button>
-        </div>
-        <div class="flex items-center gap-4 window-controls no-drag">
-          <button id="minimize-button" class="window-control w-6 h-6 flex items-center justify-center cursor-pointer rounded transition-all duration-300 hover:opacity-70 hover:bg-tertiary hover:scale-110">
-            <svg width="18" height="18" viewBox="0 0 18 18"><path d="M3 9H15" stroke="#E0E0E0" stroke-width="2" stroke-linecap="round"/></svg>
-          </button>
-          <button id="close-button" class="window-control w-6 h-6 flex items-center justify-center cursor-pointer rounded transition-all duration-300 hover:opacity-70 hover:bg-tertiary hover:scale-110">
-            <svg width="18" height="18" viewBox="0 0 18 18"><path d="M3 3L15 15M15 3L3 15" stroke="#E0E0E0" stroke-width="2" stroke-linecap="round"/></svg>
-          </button>
-        </div>
+  <div class="app-frame">
+    <header class="titlebar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">§</span><span>Codex Assistant</span></div>
+      <nav class="segmented main-tabs" aria-label="Разделы">
+        <button id="tab-main" class="active" type="button" aria-pressed="true">Главная</button>
+        <button id="tab-settings" type="button" aria-pressed="false">Настройки</button>
+      </nav>
+      <div class="window-controls">
+        <button id="minimize-button" class="icon-button window-control" type="button" aria-label="Свернуть" title="Свернуть">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>
+        </button>
+        <button id="close-button" class="icon-button window-control" type="button" aria-label="Закрыть" title="Закрыть">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
       </div>
-    </div>
+    </header>
 
-    <div id="main-content" class="flex h-full pt-[44px] px-6">
-      <div class="w-1/2 flex flex-col pt-6 pr-5 pb-5">
-        <h1 class="text-primary-t text-[32px] font-bold leading-tight tracking-tight mb-6" style="margin-top:-20px;position:relative;top:-3px;letter-spacing:-0.02em;">Codex Assistant</h1>
-
-        <p class="text-muted-t text-[0.9375rem] font-medium uppercase tracking-wide mb-1.5">Список серверов:</p>
-
-        <div id="server-selector" class="relative w-full mb-4 no-drag">
-          <button id="server-selector-button"
-            class="server-selector-button w-full h-11 border border-[var(--border-color-light)] rounded-lg bg-secondary flex items-center justify-between px-3 cursor-pointer text-primary-t transition-all duration-300 shimmer disabled:opacity-50 disabled:cursor-default hover:[&:not(:disabled)]:border-accent hover:[&:not(:disabled)]:bg-tertiary hover:[&:not(:disabled)]:-translate-y-px hover:[&:not(:disabled)]:shadow-[0_4px_12px_rgba(223,0,91,0.15)]"
-            disabled>
-            <span id="selected-server-name" class="server-name flex items-center gap-2 text-primary-t text-[0.9375rem]">
-              <span id="server-icon" class="server-icon"></span>
-              <span id="server-text">Загрузка...</span>
-            </span>
-            <span class="dropdown-arrow text-secondary-t text-xs ml-1 transition-transform duration-300">▼</span>
+    <main id="main-content" class="home-view">
+      <section class="launch-panel" aria-labelledby="home-title">
+        <div class="launch-intro">
+          <h1 id="home-title">Справочник<br>Majestic RP</h1>
+          <p>Законы и правила поверх игры</p>
+        </div>
+        <div class="launch-controls">
+          <div class="field">
+            <label for="server-selector-button">Игровой сервер</label>
+            <div id="server-selector" class="picker">
+              <button id="server-selector-button" class="picker-button" type="button" aria-expanded="false" aria-controls="server-dropdown" disabled>
+                <span class="server-name"><span id="server-icon" class="server-icon"></span><span id="server-text">Загрузка…</span></span>
+                <span class="chevron" aria-hidden="true"></span>
+              </button>
+              <div id="server-dropdown" class="dropdown hidden"><div id="servers-list"></div></div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="hotkey-editor">Горячая клавиша</label>
+            <button id="hotkey-editor" class="hotkey-editor" type="button" title="Изменить горячую клавишу"><kbd id="hotkey-display">Ctrl+Shift+K</kbd></button>
+          </div>
+          <button id="open-search" class="button primary open-search" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+            Открыть поиск
+            <svg class="open-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
           </button>
-          <div id="server-dropdown" class="server-dropdown hidden absolute top-[calc(100%+4px)] left-0 right-0 border border-[var(--border-color-light)] rounded-lg bg-tertiary z-[100] max-h-[250px] overflow-y-auto shadow-[0_8px_24px_rgba(0,0,0,0.4)] custom-scroll" style="animation:dropdownFade 0.25s var(--transition-bounce);">
-            <div id="servers-list"></div>
-          </div>
         </div>
+        <div id="update-indicator" class="data-status hidden"><span id="last-update-text"></span></div>
+      </section>
 
-        <div id="update-indicator" class="update-indicator hidden items-start gap-2 px-3 py-3 bg-secondary border border-[var(--border-color)] rounded-lg shimmer" style="display:none;margin-top:20px;margin-bottom:24px;position:relative;top:-25px;overflow:hidden;">
-          <div class="update-icon">
-            <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" stroke="#4ade80" stroke-width="1.5" fill="none"/><path d="M5 8L7 10L11 6" stroke="#4ade80" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
-          </div>
-          <span class="update-indicator-text text-secondary-t text-[0.8125rem] font-light leading-relaxed relative z-[2]">
-            Законодательная база обновляется автоматически.
-            <span id="last-update-text" class="block mt-1 text-muted-t" style="font-size:11px;"></span>
-          </span>
-        </div>
+      <section class="history-panel" aria-labelledby="history-title">
+        <h2 id="history-title">Что нового</h2>
+        <div id="updates-list" class="updates-list"></div>
+      </section>
 
-        <p class="text-muted-t text-[0.9375rem] font-medium uppercase tracking-wide mb-1.5">Назначить клавишу:</p>
-        <div id="hotkey-editor" class="hotkey-editor w-full h-11 border border-[var(--border-color-light)] rounded-lg bg-secondary flex items-center justify-center cursor-pointer outline-none mb-1 relative shimmer transition-all duration-300 hover:border-accent hover:bg-tertiary hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(223,0,91,0.15)] focus:border-accent focus:shadow-[0_0_0_3px_var(--accent-glow)] no-drag" tabindex="0">
-          <span id="hotkey-display" class="text-primary-t text-base font-medium">Ctrl+Shift+K</span>
-        </div>
-        <button id="open-search" type="button" class="open-search no-drag">Открыть поиск</button>
-        <p class="text-muted-t text-[0.8125rem] leading-relaxed mt-2">Нажмите чтобы изменить. Работает с любой раскладкой.</p>
-      </div>
+      <footer class="home-footer">
+        <a class="external-link" href="https://github.com/alamantik/majestic-laws-db">Источник правил и законов</a>
+        <nav class="social-links" aria-label="Ссылки">
+          <a id="link-telegram" href="https://t.me/one1_wizard" class="icon-button link-icon" aria-label="Telegram" title="Telegram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 3.4 2.8 10.7c-1.1.4-1.1 1.1-.2 1.4l4.8 1.5 10.9-6.9c.5-.3.9-.1.5.2l-8.8 8.2-.3 4.3c.5 0 .7-.2 1-.5l2.3-2.2 4.9 3.6c.9.5 1.4.2 1.6-.8l3.2-15c.3-1.1-.4-1.6-1.1-1.1Z"/></svg></a>
+          <a id="link-github" href="https://github.com/dev-onewizard/dev-onewizard/tree/main/codex-assistant" class="icon-button link-icon" aria-label="GitHub" title="GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg></a>
+          <a id="link-vk" href="https://vk.com/wizard_dev" class="icon-button link-icon" aria-label="ВКонтакте" title="ВКонтакте"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M15.684 0H8.316C2.825 0 0 2.825 0 8.316v7.368C0 21.175 2.825 24 8.316 24h7.368C21.175 24 24 21.175 24 15.684V8.316C24 2.825 21.175 0 15.684 0zm3.519 16.842h-1.895c-.557 0-.744-.456-1.759-1.471-.886-.886-1.282-1.015-1.505-1.015-.307 0-.393.086-.393.5v1.271c0 .358-.114.557-1.028.557-1.5 0-3.158-.914-4.327-2.628-1.5-1.957-1.928-3.416-1.928-3.73 0-.2.072-.386.5-.386h1.9c.372 0 .515.2.657.672.715 2.128 1.9 3.987 2.4 3.987.186 0 .272-.1.272-.643v-2.5c-.058-1.086-.636-1.172-.636-1.558 0-.186.158-.386.415-.386h2.915c.358 0 .472.2.472.672v3.473c0 .357.1.486.272.486.222 0 .544-.215 1.258-.944.7-.715 1.214-1.786 1.214-1.786.1-.172.258-.343.615-.343h1.9c.586 0 .715.3.558.743-.308.986-2.014 3.072-2.014 3.072-.157.23-.2.343 0 .615.143.215.643.7.986 1.1.572.65 1.028 1.214 1.15 1.6.164.486-.072.858-.558.858z"/></svg></a>
+          <a id="donate" href="https://www.donationalerts.com/r/wizard_dev" class="icon-button link-icon" aria-label="Поддержать проект" title="Поддержать проект"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></a>
+        </nav>
+      </footer>
+    </main>
 
-      <div class="w-1/2 flex flex-col pt-6 pl-5 pb-5">
-        <div class="updates-container flex-1 bg-secondary rounded-lg overflow-hidden border border-[var(--border-color)] mb-4 relative z-[1] min-h-0 shimmer">
-          <div id="updates-list" class="updates-list h-full py-4 pl-6 pr-4 overflow-y-auto relative z-[1] custom-scroll"></div>
-        </div>
+    <main id="settings-content" class="settings-view hidden">
+      <div class="settings-heading"><h1>Настройки</h1><span class="version-label">Версия <span id="settings-current-version">—</span></span></div>
+      <div class="settings-grid">
+        <section class="settings-card">
+          <h2>Оформление</h2>
+          <div class="setting-row"><span>Цветовая тема</span><button id="settings-theme-toggle" class="button" type="button"><span id="settings-theme-text">Тёмная</span></button></div>
+          <div class="setting-row"><label for="settings-opacity-slider">Прозрачность поиска</label>
+            <div class="range-control"><input id="settings-opacity-slider" type="range" min="0" max="25" value="0"><output id="settings-opacity-value" for="settings-opacity-slider">0%</output></div>
+          </div>
+          <div class="setting-row"><label for="settings-auto-hide">Автоскрытие поиска</label><input id="settings-auto-hide" class="switch" type="checkbox" role="switch"></div>
+        </section>
 
-        <div class="w-full mt-auto flex items-center gap-3 pt-2">
-          <span class="text-secondary-t text-[0.9375rem] font-semibold uppercase tracking-wide whitespace-nowrap">Ссылки</span>
-          <div class="flex gap-3 flex-1 justify-end">
-            <a id="link-telegram" href="https://t.me/one1_wizard" target="_blank" rel="noopener noreferrer" class="link-icon no-drag w-10 h-10 rounded-lg bg-tertiary flex items-center justify-center transition-all duration-300 cursor-pointer overflow-hidden relative hover:bg-elevated hover:-translate-y-0.5" title="Telegram">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 3.4 2.8 10.7c-1.1.4-1.1 1.1-.2 1.4l4.8 1.5 10.9-6.9c.5-.3.9-.1.5.2l-8.8 8.2-.3 4.3c.5 0 .7-.2 1-.5l2.3-2.2 4.9 3.6c.9.5 1.4.2 1.6-.8l3.2-15c.3-1.1-.4-1.6-1.1-1.1Z"/></svg>
-            </a>
-            <a id="link-github" href="https://github.com/dev-onewizard/dev-onewizard/tree/main/codex-assistant" target="_blank" rel="noopener noreferrer" class="link-icon no-drag w-10 h-10 rounded-lg bg-tertiary flex items-center justify-center transition-all duration-300 cursor-pointer overflow-hidden relative hover:bg-elevated hover:-translate-y-0.5" title="GitHub">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-            </a>
-            <a id="link-vk" href="https://vk.com/wizard_dev" target="_blank" rel="noopener noreferrer" class="link-icon no-drag w-10 h-10 rounded-lg bg-tertiary flex items-center justify-center transition-all duration-300 cursor-pointer overflow-hidden relative hover:bg-elevated hover:-translate-y-0.5" title="ВКонтакте">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M15.684 0H8.316C2.825 0 0 2.825 0 8.316v7.368C0 21.175 2.825 24 8.316 24h7.368C21.175 24 24 21.175 24 15.684V8.316C24 2.825 21.175 0 15.684 0zm3.519 16.842h-1.895c-.557 0-.744-.456-1.759-1.471-.886-.886-1.282-1.015-1.505-1.015-.307 0-.393.086-.393.5v1.271c0 .358-.114.557-1.028.557-1.5 0-3.158-.914-4.327-2.628-1.5-1.957-1.928-3.416-1.928-3.73 0-.2.072-.386.5-.386h1.9c.372 0 .515.2.657.672.715 2.128 1.9 3.987 2.4 3.987.186 0 .272-.1.272-.643v-2.5c-.058-1.086-.636-1.172-.636-1.558 0-.186.158-.386.415-.386h2.915c.358 0 .472.2.472.672v3.473c0 .357.1.486.272.486.222 0 .544-.215 1.258-.944.7-.715 1.214-1.786 1.214-1.786.1-.172.258-.343.615-.343h1.9c.586 0 .715.3.558.743-.308.986-2.014 3.072-2.014 3.072-.157.23-.2.343 0 .615.143.215.643.7.986 1.1.572.65 1.028 1.214 1.15 1.6.164.486-.072.858-.558.858z"/></svg>
-            </a>
-            <a id="donate" href="https://www.donationalerts.com/r/wizard_dev" target="_blank" rel="noopener noreferrer" class="link-icon no-drag w-10 h-10 rounded-lg bg-tertiary flex items-center justify-center transition-all duration-300 cursor-pointer overflow-hidden relative hover:bg-elevated hover:-translate-y-0.5" title="Поддержать проект">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-            </a>
+        <section class="settings-card">
+          <h2>Звук</h2>
+          <div class="setting-row"><label for="settings-sound-enabled">Звуковые эффекты</label><input id="settings-sound-enabled" class="switch" type="checkbox" role="switch" checked></div>
+          <div class="setting-row"><label for="settings-volume-slider">Громкость</label>
+            <div class="range-control"><input id="settings-volume-slider" type="range" min="0" max="100" value="70"><output id="settings-volume-value" for="settings-volume-slider">70%</output></div>
           </div>
-        </div>
-      </div>
-    </div>
+          <div class="setting-actions"><button class="button sound-preview-btn" type="button" data-sound="select">Проверить звук</button></div>
+        </section>
 
-    <div id="settings-content" class="hidden flex h-full pt-[44px] px-6">
-      <div class="settings-container w-full h-full py-5 overflow-y-auto custom-scroll">
-        <h2 class="text-primary-t font-bold mb-6" style="font-size:24px;letter-spacing:-0.02em;">Настройки приложения</h2>
-
-        <div class="settings-section bg-secondary border border-[var(--border-color)] rounded-[10px] p-4 mb-5 transition-all duration-300">
-          <h3 class="text-primary-t text-[1.1875rem] font-semibold mb-4 pb-1 border-b-2 border-accent inline-block">Внешний вид</h3>
-          <div class="settings-item flex items-center justify-between py-2 border-b border-[var(--border-color)]">
-            <span class="text-secondary-t text-[0.9375rem]">Тема оформления</span>
-            <div class="settings-item-control flex items-center gap-3">
-              <button id="settings-theme-toggle" class="settings-button relative overflow-hidden shimmer px-4 py-1.5 bg-tertiary border border-[var(--border-color-light)] rounded-md text-primary-t text-[0.9375rem] cursor-pointer transition-all duration-300 flex items-center gap-2 hover:bg-elevated hover:border-accent hover:-translate-y-px hover:shadow-[0_4px_8px_rgba(223,0,91,0.15)]">
-                <span id="settings-theme-text">Тёмная</span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-              </button>
-            </div>
-          </div>
-          <div class="settings-item flex items-center justify-between py-2 border-b border-[var(--border-color)]">
-            <span class="text-secondary-t text-[0.9375rem]">Прозрачность окна поиска</span>
-            <div class="settings-item-control flex items-center gap-3">
-              <input type="range" id="settings-opacity-slider" aria-label="Прозрачность окна поиска" class="settings-slider" min="0" max="25" value="0" step="1">
-              <span id="settings-opacity-value" class="range-value text-primary-t text-[0.9375rem] font-medium min-w-[40px] text-right">0%</span>
-            </div>
-          </div>
-          <div class="settings-item flex items-center justify-between py-2">
-            <span class="text-secondary-t text-[0.9375rem]">Автоматически скрывать окно поиска</span>
-            <div class="settings-item-control flex items-center gap-3">
-              <label class="settings-switch"><input type="checkbox" id="settings-auto-hide"><span class="settings-switch-slider"></span></label>
-            </div>
-          </div>
-        </div>
-
-        <div class="settings-section bg-secondary border border-[var(--border-color)] rounded-[10px] p-4 mb-5 transition-all duration-300">
-          <h3 class="text-primary-t text-[1.1875rem] font-semibold mb-4 pb-1 border-b-2 border-accent inline-block">Звук</h3>
-          <div class="settings-item flex items-center justify-between py-2 border-b border-[var(--border-color)]">
-            <span class="text-secondary-t text-[0.9375rem]">Звуковые эффекты</span>
-            <div class="settings-item-control flex items-center gap-3">
-              <label class="settings-switch"><input type="checkbox" id="settings-sound-enabled" checked><span class="settings-switch-slider"></span></label>
-            </div>
-          </div>
-          <div class="settings-item flex items-center justify-between py-2">
-            <span class="text-secondary-t text-[0.9375rem]">Громкость</span>
-            <div class="settings-item-control flex items-center gap-3">
-              <input type="range" id="settings-volume-slider" aria-label="Громкость" class="settings-slider" min="0" max="100" value="70" step="1">
-              <span id="settings-volume-value" class="range-value text-primary-t text-[0.9375rem] font-medium min-w-[40px] text-right">70%</span>
-              <button class="sound-preview-btn settings-button small relative shimmer p-1.5 bg-tertiary border border-[var(--border-color-light)] rounded text-secondary-t cursor-pointer transition-all duration-300 hover:bg-elevated hover:border-accent hover:text-accent hover:scale-110" data-sound="notification" title="Тест">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 5V4L7 9H4a1 1 0 0 0-1 1zM16 8a5 5 0 0 1 0 8"/></svg>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="settings-section bg-secondary border border-[var(--border-color)] rounded-[10px] p-4 mb-5 transition-all duration-300">
-          <h3 class="text-primary-t text-[1.1875rem] font-semibold mb-4 pb-1 border-b-2 border-accent inline-block">Обновления</h3>
-          <div class="settings-item flex items-center justify-between py-2 border-b border-[var(--border-color)]">
-            <span class="text-secondary-t text-[0.9375rem]">Текущая версия</span>
-            <div class="settings-item-control flex items-center gap-3">
-              <span id="settings-current-version" class="text-primary-t text-[0.9375rem] font-semibold bg-tertiary px-3 py-1 rounded">—</span>
-            </div>
-          </div>
-          <div id="settings-auto-update-row" class="settings-item flex items-center justify-between py-2 border-b border-[var(--border-color)]">
-            <label id="settings-auto-update-label" for="settings-auto-update" class="text-secondary-t text-[0.9375rem]">Автоматическое обновление</label>
-            <div class="settings-item-control flex items-center gap-3">
-              <label class="settings-switch"><input type="checkbox" id="settings-auto-update" checked><span class="settings-switch-slider"></span></label>
-            </div>
-          </div>
-          <p id="settings-update-mode" class="settings-source mt-2"></p>
-          <div class="settings-item flex items-center justify-end py-2">
-            <div class="settings-item-control flex items-center gap-3">
-              <button id="settings-check-updates" class="settings-button primary relative overflow-hidden shimmer px-4 py-1.5 accent-bg border border-accent rounded-md text-white text-[0.9375rem] cursor-pointer transition-all duration-300 flex items-center gap-2 hover:bg-[var(--accent-hover)] hover:-translate-y-px">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M1 12s2-8 11-8 11 8 11 8-2 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                Проверить обновления
-              </button>
-            </div>
-          </div>
-          <div id="settings-update-info" class="hidden mt-3 p-3 rounded-md bg-tertiary">
+        <section class="settings-card">
+          <h2>Обновления</h2>
+          <div id="settings-auto-update-row" class="setting-row"><label id="settings-auto-update-label" for="settings-auto-update">Автоматическое обновление</label><input id="settings-auto-update" class="switch" type="checkbox" role="switch" checked></div>
+          <p id="settings-update-mode" class="setting-hint"></p>
+          <div class="setting-actions"><button id="settings-check-updates" class="button" type="button">Проверить обновления</button></div>
+          <div id="settings-update-info" class="update-status hidden">
             <p id="settings-update-message" role="status"></p>
-            <progress id="settings-update-progress" aria-label="Загрузка обновления" max="100" class="hidden mt-2 w-full"></progress>
-            <button id="settings-install-update" class="hidden settings-button primary mt-2 px-3 py-1 accent-bg text-white rounded-md" type="button">Перезапустить и установить</button>
-            <a id="settings-update-release" class="hidden external-link mt-2" href="https://github.com/dev-onewizard/dev-onewizard/releases/latest">Открыть релиз на GitHub</a>
+            <progress id="settings-update-progress" class="hidden" aria-label="Загрузка обновления" max="100"></progress>
+            <button id="settings-install-update" class="button primary hidden" type="button">Перезапустить и установить</button>
+            <a id="settings-update-release" class="external-link hidden" href="https://github.com/dev-onewizard/dev-onewizard/releases/latest">Открыть релиз на GitHub</a>
           </div>
-        </div>
+        </section>
 
-        <div class="settings-section bg-secondary border border-[var(--border-color)] rounded-[10px] p-4 mb-5 transition-all duration-300">
-          <h3 class="text-primary-t text-[1.1875rem] font-semibold mb-4 pb-1 border-b-2 border-accent inline-block">Данные и кэш</h3>
-          <p class="settings-source">Правила и кодексы: <a class="external-link" href="https://github.com/alamantik/majestic-laws-db/tree/main">alamantik/majestic-laws-db</a></p>
-          <div class="settings-item flex items-center justify-between py-2 border-b border-[var(--border-color)]">
-            <span class="text-secondary-t text-[0.9375rem]">Размер кэша</span>
-            <div class="settings-item-control flex items-center gap-3">
-              <span id="settings-cache-size" class="text-secondary-t text-[0.9375rem]">0 MB</span>
-            </div>
+        <section class="settings-card">
+          <h2>Данные</h2>
+          <div class="setting-row"><span>Размер кэша</span><output id="settings-cache-size">0 Б</output></div>
+          <p class="setting-hint"><a class="external-link" href="https://github.com/alamantik/majestic-laws-db/tree/main">База законов и правил</a></p>
+          <div class="setting-actions">
+            <button id="settings-clear-cache" class="button" type="button">Очистить кэш</button>
+            <button id="settings-reset-all" class="button danger" type="button">Сбросить настройки</button>
           </div>
-          <div class="settings-item flex items-center justify-between py-2 border-b border-[var(--border-color)]">
-            <span></span>
-            <div class="settings-item-control flex items-center gap-3">
-              <button id="settings-clear-cache" class="settings-button warning relative overflow-hidden shimmer px-4 py-1.5 bg-tertiary border border-[var(--warning-color)] rounded-md text-[var(--warning-color)] text-[0.9375rem] cursor-pointer transition-all duration-300 flex items-center gap-2 hover:bg-[rgba(241,177,41,0.1)] hover:-translate-y-px">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                Очистить кэш
-              </button>
-            </div>
-          </div>
-          <div class="settings-item flex items-center justify-between py-2">
-            <span></span>
-            <div class="settings-item-control flex items-center gap-3">
-              <button id="settings-reset-all" class="settings-button danger relative overflow-hidden shimmer px-4 py-1.5 bg-tertiary border border-[var(--error-color)] rounded-md text-[var(--error-color)] text-[0.9375rem] cursor-pointer transition-all duration-300 flex items-center gap-2 hover:bg-[rgba(204,54,54,0.1)] hover:-translate-y-px">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                Сбросить все настройки
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="settings-section bg-secondary border border-[var(--border-color)] rounded-[10px] p-4 mb-5 transition-all duration-300">
-          <h3 class="text-primary-t text-[1.1875rem] font-semibold mb-4 pb-1 border-b-2 border-accent inline-block">О приложении</h3>
-          <div class="text-center py-4">
-            <div class="about-logo mb-2">Codex Assistant</div>
-            <div class="text-secondary-t text-[1.0625rem] mb-1">Версия <span id="about-version">—</span></div>
-            <div class="text-muted-t text-[0.9375rem] mb-1">Разработчик: onewizard-dev</div>
-            <div class="text-muted-t text-[0.8125rem]">© 2026</div>
-          </div>
-        </div>
+        </section>
       </div>
-    </div>
-
+    </main>
   </div>
-</div>
 
-<div id="update-modal" class="modal hidden fixed inset-0 z-[1000] flex items-center justify-center opacity-0 invisible transition-all duration-300">
-  <div class="modal-overlay absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
-  <div class="modal-content relative bg-secondary border border-[var(--border-color-light)] rounded-[10px] p-6 w-[450px] max-w-[90vw] scale-90 transition-transform duration-300 shadow-[0_16px_32px_rgba(0,0,0,0.5)] z-[1001] overflow-hidden">
-    <h2 class="text-primary-t text-[1.3125rem] font-semibold mb-2">Доступно новое обновление <span id="update-version"></span></h2>
-    <p class="text-secondary-t text-[1.0625rem] mb-6 leading-relaxed">Обновление уже загружено. Установить сейчас?</p>
-    <div class="flex gap-4 justify-end">
-      <button id="update-install-now" class="modal-button primary no-drag relative overflow-hidden shimmer px-5 py-2 accent-bg text-white rounded-lg text-[1.0625rem] font-semibold cursor-pointer transition-all duration-300 flex items-center gap-2 hover:bg-[var(--accent-hover)] hover:-translate-y-px hover:shadow-[0_8px_16px_var(--accent-glow)]">
-        <svg width="16" height="16" viewBox="0 0 16 16" stroke="currentColor" stroke-width="2"><path d="M8 2v9M11 8l-3 3-3-3M2 11v2a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-2"/></svg>
-        Установить
-      </button>
-      <button id="update-install-later" class="modal-button secondary no-drag relative overflow-hidden shimmer px-5 py-2 bg-transparent text-secondary-t border border-[var(--border-color)] rounded-lg text-[1.0625rem] font-semibold cursor-pointer transition-all duration-300 hover:text-primary-t hover:border-accent hover:bg-tertiary hover:-translate-y-px">Позже</button>
-    </div>
+  <div id="update-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="update-title">
+    <div class="modal-overlay"></div>
+    <section class="modal-content">
+      <h2 id="update-title">Доступна версия <span id="update-version"></span></h2>
+      <p>Обновление загружено. Приложение перезапустится при установке.</p>
+      <div class="modal-actions">
+        <button id="update-install-later" class="button" type="button">Позже</button>
+        <button id="update-install-now" class="button primary" type="button">Установить</button>
+      </div>
+    </section>
   </div>
-</div>
 
-<div id="confirm-modal" class="modal hidden fixed inset-0 z-[1000] flex items-center justify-center opacity-0 invisible transition-all duration-300">
-  <div class="modal-overlay absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
-  <div class="modal-content relative bg-secondary border border-[var(--border-color-light)] rounded-[10px] p-6 w-[450px] max-w-[90vw] scale-90 transition-transform duration-300 shadow-[0_16px_32px_rgba(0,0,0,0.5)] z-[1001] overflow-hidden">
-    <h2 id="confirm-title" class="text-primary-t text-[1.3125rem] font-semibold mb-2">Подтверждение</h2>
-    <p id="confirm-message" class="text-secondary-t text-[1.0625rem] mb-6 leading-relaxed">Вы уверены?</p>
-    <div class="flex gap-4 justify-end">
-      <button id="confirm-yes" class="modal-button primary no-drag relative overflow-hidden shimmer px-5 py-2 accent-bg text-white rounded-lg text-[1.0625rem] font-semibold cursor-pointer transition-all duration-300 hover:bg-[var(--accent-hover)] hover:-translate-y-px">Да</button>
-      <button id="confirm-no" class="modal-button secondary no-drag relative overflow-hidden shimmer px-5 py-2 bg-transparent text-secondary-t border border-[var(--border-color)] rounded-lg text-[1.0625rem] font-semibold cursor-pointer transition-all duration-300 hover:text-primary-t hover:border-accent hover:bg-tertiary hover:-translate-y-px">Нет</button>
-    </div>
+  <div id="confirm-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="modal-overlay"></div>
+    <section class="modal-content">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-message"></p>
+      <div class="modal-actions">
+        <button id="confirm-no" class="button" type="button">Отмена</button>
+        <button id="confirm-yes" class="button primary" type="button">Подтвердить</button>
+      </div>
+    </section>
   </div>
-</div>
 
-<script src="js/logger.js"></script>
-<script src="js/safe-utils.js"></script>
-<script src="js/error-boundary.js"></script>
-<script src="js/app-core.js"></script>
-<script src="js/theme-manager.js"></script>
-<script src="js/sound-manager.js"></script>
-<script src="js/settings-manager.js"></script>
-<script src="js/main-window.js"></script>
+  <script src="js/app-core.js"></script>
+  <script src="js/sound-manager.js"></script>
+  <script src="js/settings-manager.js"></script>
+  <script src="js/main-window.js"></script>
 </body>
 </html>

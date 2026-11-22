@@ -1,8 +1,6 @@
 (function() {
     'use strict';
 
-    const log = window.logger ? logger.child('CORE') : console;
-
     const CONSTANTS = {
         LAW_ABBR: { UK: 'УК', AK: 'АК', DK: 'ДК', PK: 'ПК', UAK: 'УАК' },
         LAW_FULL: {
@@ -81,157 +79,26 @@
         }
     };
 
-    const offlineCache = {
-        laws: {},
-        rules: {},
-        servers: null
-    };
-
-    // LRU-кэш: хранит не более maxSize записей, вытесняя самые старые
-    class LRUCache {
-        constructor(maxSize = 3) {
-            this.maxSize = maxSize;
-            this.cache = new Map();
-        }
-        
-        get(key) {
-            if (!this.cache.has(key)) return undefined;
-            // Переставляем в конец (самый свежий)
-            const value = this.cache.get(key);
-            this.cache.delete(key);
-            this.cache.set(key, value);
-            return value;
-        }
-        
-        set(key, value) {
-            if (this.cache.has(key)) this.cache.delete(key);
-            else if (this.cache.size >= this.maxSize) {
-                // Удаляем первый (самый старый) ключ
-                this.cache.delete(this.cache.keys().next().value);
-            }
-            this.cache.set(key, value);
-        }
-        
-        has(key) { return this.cache.has(key); }
-        
-        delete(key) { return this.cache.delete(key); }
-        
-        clear() { this.cache.clear(); }
-        
-        get size() { return this.cache.size; }
-    }
-
-    window.LRUCache = LRUCache;
-
-    const isStorageAvailable = (() => {
-        try {
-            const testKey = '__storage_test__';
-            localStorage.setItem(testKey, '1');
-            localStorage.removeItem(testKey);
-            return true;
-        } catch (_) {
-            return false;
-        }
-    })();
-
-    try {
-        if (isStorageAvailable) {
-            const savedLaws = localStorage.getItem('offline_laws');
-            if (savedLaws) {
-                try {
-                    offlineCache.laws = JSON.parse(savedLaws);
-                } catch (e) {
-                    log.warn('Failed to parse offline_laws:', e);
-                }
-            }
-            
-            const savedRules = localStorage.getItem('offline_rules');
-            if (savedRules) {
-                try {
-                    offlineCache.rules = JSON.parse(savedRules);
-                } catch (e) {
-                    log.warn('Failed to parse offline_rules:', e);
-                }
-            }
-            
-            const savedServers = localStorage.getItem('offline_servers');
-            if (savedServers) {
-                try {
-                    offlineCache.servers = JSON.parse(savedServers);
-                } catch (e) {
-                    log.warn('Failed to parse offline_servers:', e);
-                }
-            }
-        }
-    } catch (e) {
-        log.warn('Failed to load offline cache:', e);
-    }
+    const htmlEscapes = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 
     const Utils = {
         escapeHtml(text) {
-            if (!text) return '';
-            try {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML.replaceAll('"', '&quot;').replaceAll("'", '&#39;');
-            } catch (error) {
-                log.error('escapeHtml error:', error);
-                return String(text);
+            return String(text ?? '').replace(/[&<>"']/g, character => htmlEscapes[character]);
+        },
+
+        highlightText(text, pattern) {
+            if (!pattern) return this.escapeHtml(text);
+
+            const input = String(text ?? '');
+            const pieces = [];
+            let offset = 0;
+            for (const match of input.matchAll(pattern)) {
+                pieces.push(this.escapeHtml(input.slice(offset, match.index)));
+                pieces.push('<mark class="search-highlight">' + this.escapeHtml(match[0]) + '</mark>');
+                offset = match.index + match[0].length;
             }
-        },
-        
-        highlightText(text, searchTerm) {
-            if (!text || !searchTerm) return this.escapeHtml(text);
-            try {
-                const escaped = this.escapeHtml(text);
-                const term = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                if (!term) return escaped;
-                return escaped.replace(new RegExp(`(${term})`, 'gi'), '<span class="search-highlight">$1</span>');
-            } catch (error) {
-                log.error('highlightText error:', error);
-                return this.escapeHtml(text);
-            }
-        },
-        
-        isTextLong(text, maxLength = 150) {
-            return text && text.length > maxLength;
-        },
-        
-        debounce(func, wait) {
-            let timeout;
-            return function(...args) {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => {
-                    try {
-                        func.apply(this, args);
-                    } catch (error) {
-                        log.error('debounced function error:', error);
-                    }
-                }, wait);
-            };
-        },
-        
-        throttle(func, limit) {
-            let inThrottle;
-            return function(...args) {
-                if (!inThrottle) {
-                    func.apply(this, args);
-                    inThrottle = true;
-                    setTimeout(() => inThrottle = false, limit);
-                }
-            };
-        },
-        
-        getServerIcon(serverId) {
-            if (serverId === 'orlando-18') {
-                return '<img src="../assets/servers/ru18.svg" alt="">';
-            }
-            if (serverId === 'memphis-19') {
-                return '<img src="../assets/servers/ru19.svg" alt="">';
-            }
-            const city = String(serverId || '').toLowerCase().replace(/-\d+$/, '');
-            const key = Object.hasOwn(CONSTANTS.SERVER_ICONS, city) ? city : 'empty';
-            return CONSTANTS.SERVER_ICONS[key].replace('<svg', '<svg aria-hidden="true" data-city="' + key + '"');
+            pieces.push(this.escapeHtml(input.slice(offset)));
+            return pieces.join('');
         },
 
         renderRange(slider, label, value) {
@@ -240,169 +107,54 @@
             slider.style.setProperty('--range-progress', (slider.value / slider.max) * 100 + '%');
         },
 
-        toggleTextExpand(e) {
-            try {
-                e.stopPropagation();
-                const el = e.currentTarget;
-                
-                requestAnimationFrame(() => {
-                    if (el.classList.contains('collapsible')) {
-                        el.classList.remove('collapsible');
-                        el.classList.add('expanded');
-                    } else if (el.classList.contains('expanded')) {
-                        el.classList.remove('expanded');
-                        el.classList.add('collapsible');
-                    }
-                });
-            } catch (error) {
-                log.error('toggleTextExpand error:', error);
-            }
-        },
-        
-        setupCollapsible(items) {
-            if (!items || items.length === 0) return;
-            
-            requestAnimationFrame(() => {
-                items.forEach(item => {
-                    if (!item) return;
-                    
-                    const fields = ['text', 'note', 'explanation', 'exception'];
-                    
-                    fields.forEach(field => {
-                        try {
-                            if (item[field] && this.isTextLong(item[field])) {
-                                const id = field === 'text' ? `text-${item.id}` : `${field}-${item.id}`;
-                                const cleanId = id.replace(/[^a-zA-Z0-9-]/g, '-');
-                                const el = document.getElementById(cleanId);
-                                
-                                if (el) {
-                                    el.classList.remove('collapsible', 'expanded');
-                                    el.removeEventListener('click', this.toggleTextExpand);
-                                    
-                                    el.classList.add('collapsible');
-                                    el.addEventListener('click', this.toggleTextExpand, { passive: true });
-                                }
-                            }
-                        } catch (error) {
-                            log.error('setupCollapsible item error:', error);
-                        }
-                    });
-                });
-            });
-        },
-        
-        saveToOfflineCache(type, key, data) {
-            try {
-                if (!isStorageAvailable) return;
-                
-                if (type === 'laws') {
-                    offlineCache.laws[key] = data;
-                    localStorage.setItem('offline_laws', JSON.stringify(offlineCache.laws));
-                } else if (type === 'rules') {
-                    offlineCache.rules[key] = data;
-                    localStorage.setItem('offline_rules', JSON.stringify(offlineCache.rules));
-                } else if (type === 'servers') {
-                    offlineCache.servers = data;
-                    localStorage.setItem('offline_servers', JSON.stringify(data));
-                }
-            } catch (e) {
-                log.warn('Failed to save to offline cache:', e);
-            }
-        },
-        
-        loadFromOfflineCache(type, key) {
-            try {
-                if (type === 'laws') {
-                    return offlineCache.laws[key];
-                } else if (type === 'rules') {
-                    return offlineCache.rules[key];
-                } else if (type === 'servers') {
-                    return offlineCache.servers;
-                }
-            } catch (e) {
-                log.warn('Failed to load from offline cache:', e);
-            }
-            return null;
-        },
-        
-        disableSelection() {
-            try {
-                document.body.style.userSelect = 'none';
-                document.body.style.webkitUserSelect = 'none';
-                document.body.style.msUserSelect = 'none';
-                document.body.style.mozUserSelect = 'none';
-            } catch (error) {
-                log.error('disableSelection error:', error);
-            }
-        },
-        
-        clearAllCache() {
-            for (const key of ['offline_laws', 'offline_rules', 'offline_servers']) localStorage.removeItem(key);
-            offlineCache.laws = {};
-            offlineCache.rules = {};
-            offlineCache.servers = null;
-            return true;
+        applyTheme(theme) {
+            document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
         },
 
-        fadeOut(element, duration = 300) {
-            return new Promise((resolve) => {
-                if (!element) { resolve(); return; }
-                element.style.transition = `opacity ${duration}ms ease`;
-                element.style.opacity = '0';
-                setTimeout(() => {
-                    element.style.transition = '';
-                    resolve();
-                }, duration);
+        clearAllCache() {
+            for (const key of ['offline_laws', 'offline_rules', 'offline_servers']) localStorage.removeItem(key);
+        },
+
+        getServerIcon(serverId) {
+            if (serverId === 'orlando-18') return '<img src="../assets/servers/ru18.svg" alt="">';
+            if (serverId === 'memphis-19') return '<img src="../assets/servers/ru19.svg" alt="">';
+
+            const city = String(serverId || '').toLowerCase().replace(/-\d+$/, '');
+            const key = Object.hasOwn(CONSTANTS.SERVER_ICONS, city) ? city : 'empty';
+            return CONSTANTS.SERVER_ICONS[key].replace('<svg', '<svg aria-hidden="true" data-city="' + key + '"');
+        },
+
+        serverOption(server, selected) {
+            const active = server.id === selected;
+            return '<button class="server-item' + (active ? ' selected' : '') +
+                '" type="button" aria-pressed="' + active + '" data-server-id="' + this.escapeHtml(server.id) +
+                '"><span class="server-icon">' + this.getServerIcon(server.id) +
+                '</span><span>' + this.escapeHtml(server.name) + '</span></button>';
+        },
+
+        setDropdown(button, menu, open) {
+            button.setAttribute('aria-expanded', String(open));
+            menu.classList.toggle('hidden', !open);
+        },
+
+        bindDropdown(button, menu) {
+            const setOpen = open => this.setDropdown(button, menu, open);
+            button.addEventListener('click', () => setOpen(menu.classList.contains('hidden')));
+            document.addEventListener('pointerdown', event => {
+                if (!button.contains(event.target) && !menu.contains(event.target)) setOpen(false);
             });
-        },
-        
-        // Плавный показ элемента
-        fadeIn(element, duration = 300) {
-            return new Promise((resolve) => {
-                if (!element) { resolve(); return; }
-                element.style.transition = `opacity ${duration}ms ease`;
-                element.style.opacity = '1';
-                setTimeout(() => {
-                    element.style.transition = '';
-                    resolve();
-                }, duration);
-            });
-        },
-        
-        // Новый метод для определения активной темы
-        getCurrentTheme() {
-            return document.documentElement.getAttribute('data-theme') || 'dark';
-        },
-        
-        // Новый метод для применения темы ко всем элементам
-        applyThemeToAll(theme) {
-            document.documentElement.setAttribute('data-theme', theme);
-            
-            // Обновляем мета-теги если нужно
-            const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-            if (metaThemeColor) {
-                metaThemeColor.setAttribute('content', theme === 'dark' ? '#111111' : '#FFFFFF');
-            }
-        },
-        
-        // Новый метод для оптимизации производительности при скролле
-        optimizeScroll() {
-            let ticking = false;
-            
-            return (callback) => {
-                if (!ticking) {
-                    requestAnimationFrame(() => {
-                        callback();
-                        ticking = false;
-                    });
-                    ticking = true;
+            document.addEventListener('keydown', event => {
+                if (event.key === 'Escape' && !menu.classList.contains('hidden')) {
+                    event.preventDefault();
+                    setOpen(false);
+                    button.focus();
                 }
-            };
+            });
         }
     };
 
     const AppToast = {
-        show(message, type = "success") {
+        show(message, type = 'success') {
             if (!this.element) {
                 this.element = document.createElement('div');
                 this.element.className = 'app-toast';
@@ -417,52 +169,7 @@
         }
     };
 
-    document.addEventListener('DOMContentLoaded', () => Utils.disableSelection());
-
     window.CONSTANTS = CONSTANTS;
     window.Utils = Utils;
     window.AppToast = AppToast;
-
 })();
-
-// Функция для принудительной перезагрузки данных
-window.forceReloadData = function() {
-    console.log('[Debug] Force reloading all data...');
-    
-    if (window.Utils && window.Utils.clearAllCache) {
-        window.Utils.clearAllCache();
-    }
-    
-    if (window.SearchState) {
-        if (window.SearchState.currentServer) {
-            const serverId = window.SearchState.currentServer;
-            if (SearchState.lawsCache) {
-                SearchState.lawsCache.clear();
-            }
-            SearchState.lawsData = [];
-            SearchState.filteredLaws = [];
-            SearchState.lawsLoaded = false;
-            
-            if (typeof loadLaws === 'function') {
-                loadLaws(serverId);
-            }
-        }
-        
-        if (typeof loadRules === 'function') {
-            loadRules();
-        }
-    }
-    
-    console.log('[Debug] Reload complete');
-};
-
-// Оптимизация производительности: используем requestIdleCallback если доступен
-window.requestIdleCallback = window.requestIdleCallback || function(cb) {
-    return setTimeout(() => cb({ timeRemaining: () => 0 }), 1);
-};
-
-window.cancelIdleCallback = window.cancelIdleCallback || function(id) {
-    clearTimeout(id);
-};
-
-console.log('[Core] Debug functions available: window.forceReloadData()');

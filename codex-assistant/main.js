@@ -35,9 +35,9 @@ let searchWindow = null;
 let currentHotkey = 'Ctrl+Shift+K';
 let isEditingHotkey = false;
 let autoHideEnabled = true;
-let isQuitting = false;
 let lastSearchBounds = null;
 let inactivityTimer = null;
+let searchHideTimer = null;
 const INACTIVITY_TIMEOUT = 20000; // 20 секунд бездействия
 
 const dataCache = {
@@ -47,6 +47,7 @@ const dataCache = {
 };
 const CACHE_TTL = 10 * 60 * 1000;
 let cacheGeneration = 0;
+const pendingData = new Map();
 
 function cacheDir() {
     return path.join(app.getPath('userData'), 'reference-cache');
@@ -174,29 +175,40 @@ function writeAutoHide(enabled) {
 // ========== УПРАВЛЕНИЕ ТАЙМЕРОМ БЕЗДЕЙСТВИЯ ==========
 
 function resetInactivityTimer() {
-    if (inactivityTimer) {
-        clearTimeout(inactivityTimer);
-        inactivityTimer = null;
-    }
-    
-    if (searchWindow && !searchWindow.isDestroyed() && searchWindow.isVisible() && autoHideEnabled) {
-        inactivityTimer = setTimeout(() => {
-            if (searchWindow && !searchWindow.isDestroyed() && searchWindow.isVisible() && autoHideEnabled) {
-                console.log('[Inactivity] Window closed after 20 seconds of inactivity');
-                searchWindow.webContents.send('window:set-css-opacity-zero');
-                setTimeout(() => {
-                    if (searchWindow && !searchWindow.isDestroyed()) searchWindow.hide();
-                }, 100);
-            }
-        }, INACTIVITY_TIMEOUT);
+    clearInactivityTimer();
+    if (searchWindow?.isVisible() && autoHideEnabled) {
+        inactivityTimer = setTimeout(hideSearchWindow, INACTIVITY_TIMEOUT);
     }
 }
 
 function clearInactivityTimer() {
-    if (inactivityTimer) {
-        clearTimeout(inactivityTimer);
-        inactivityTimer = null;
-    }
+    clearTimeout(inactivityTimer);
+    inactivityTimer = null;
+}
+
+function cancelSearchHide() {
+    clearTimeout(searchHideTimer);
+    searchHideTimer = null;
+}
+
+function hideSearchWindow() {
+    const window = searchWindow;
+    if (!window?.isVisible() || searchHideTimer) return;
+
+    clearInactivityTimer();
+    window.webContents.send('window:set-css-opacity-zero');
+    searchHideTimer = setTimeout(() => {
+        searchHideTimer = null;
+        if (!window.isDestroyed()) window.hide();
+    }, 115);
+}
+
+function showSearchWindow() {
+    cancelSearchHide();
+    searchWindow.webContents.send('window:restore-css-opacity');
+    searchWindow.show();
+    searchWindow.focus();
+    resetInactivityTimer();
 }
 
 // ========== НОРМАЛИЗАЦИЯ ID СЕРВЕРОВ ==========
@@ -208,7 +220,22 @@ function normalizeServerId(serverId) {
 
 // ========== ЗАГРУЗКА ДАННЫХ ==========
 
-async function fetchRepoStructure(ignoreCache = false) {
+function oncePerRequest(key, load) {
+    const current = pendingData.get(key);
+    if (current) return current;
+
+    const request = load().finally(() => {
+        if (pendingData.get(key) === request) pendingData.delete(key);
+    });
+    pendingData.set(key, request);
+    return request;
+}
+
+function fetchRepoStructure(forceRefresh = false) {
+    return forceRefresh ? requestRepoStructure(true) : oncePerRequest('catalog', requestRepoStructure);
+}
+
+async function requestRepoStructure(ignoreCache = false) {
     if (!ignoreCache && dataCache.structure && (Date.now() - dataCache.structureTimestamp) < CACHE_TTL) {
         return dataCache.structure;
     }
@@ -402,7 +429,13 @@ function transformLawsData(serverId, rawData) {
     };
 }
 
-async function fetchServerJson(serverId, forceRefresh = false) {
+function fetchServerJson(serverId, forceRefresh = false) {
+    const key = 'laws-' + normalizeServerId(serverId);
+    if (forceRefresh) return requestServerJson(serverId, true);
+    return oncePerRequest(key, () => requestServerJson(serverId));
+}
+
+async function requestServerJson(serverId, forceRefresh = false) {
     const normalizedId = normalizeServerId(serverId);
     if (!/^[a-z0-9-]+$/.test(normalizedId)) return null;
     
@@ -570,8 +603,8 @@ async function createMainWindow() {
     }
     
     mainWindow = new BrowserWindow({
-        width: 800,
-        height: 450,
+        width: 820,
+        height: 510,
         resizable: false,
         frame: false,
         transparent: true,
@@ -612,12 +645,6 @@ async function createMainWindow() {
 }
 
 function createSearchWindow() {
-    if (searchWindow && !searchWindow.isDestroyed()) {
-        searchWindow.show();
-        searchWindow.focus();
-        return;
-    }
-    
     autoHideEnabled = readAutoHide();
     
     searchWindow = new BrowserWindow({
@@ -652,51 +679,30 @@ function createSearchWindow() {
     }
     
     searchWindow.on('closed', () => {
+        cancelSearchHide();
+        clearInactivityTimer();
         searchWindow = null;
         lastSearchBounds = null;
-        clearInactivityTimer();
     });
-    
-    // ИСПРАВЛЕННЫЙ ОБРАБОТЧИК BLUR
+
     searchWindow.on('blur', () => {
-        // Проверяем, не является ли фокус на devtools
-        if (searchWindow && !searchWindow.isDestroyed() && 
-            !searchWindow.webContents.isDevToolsOpened() && 
-            autoHideEnabled && !isEditingHotkey) {
-            
-            console.log('[Search] Window lost focus, hiding...');
-            clearInactivityTimer();
-            
-            // Отправляем событие для плавного скрытия
-            searchWindow.webContents.send('window:set-css-opacity-zero');
-            
-            // Скрываем окно после небольшой задержки
-            setTimeout(() => {
-                if (searchWindow && !searchWindow.isDestroyed()) {
-                    searchWindow.hide();
-                    console.log('[Search] Window hidden');
-                }
-            }, 100);
+        if (autoHideEnabled && !isEditingHotkey && !searchWindow.webContents.isDevToolsOpened()) {
+            hideSearchWindow();
         }
     });
-    
     searchWindow.on('focus', () => {
-        if (searchWindow && !searchWindow.isDestroyed() && autoHideEnabled) {
-            resetInactivityTimer();
+        if (searchHideTimer) {
+            cancelSearchHide();
+            searchWindow.webContents.send('window:restore-css-opacity');
         }
+        resetInactivityTimer();
     });
-    
+
     searchWindow.once('ready-to-show', () => {
-        if (searchWindow) {
-            if (lastSearchBounds) searchWindow.setBounds(lastSearchBounds);
-            searchWindow.show();
-            searchWindow.focus();
-            if (autoHideEnabled) {
-                resetInactivityTimer();
-            }
-        }
+        if (lastSearchBounds) searchWindow.setBounds(lastSearchBounds);
+        showSearchWindow();
     });
-    
+
     searchWindow.on('move', () => {
         if (searchWindow && !searchWindow.isDestroyed()) {
             const bounds = searchWindow.getBounds();
@@ -707,35 +713,14 @@ function createSearchWindow() {
 
 function toggleSearchWindow() {
     if (isEditingHotkey) return;
-    
-    if (!searchWindow || searchWindow.isDestroyed()) {
-        createSearchWindow();
-        Analytics.trackHotkeyUse();
-        // Отправляем сигнал для воспроизведения звука
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('play-sound', 'toggle');
-        }
-    } else {
-        if (searchWindow.isVisible()) {
-            clearInactivityTimer();
-            searchWindow.webContents.send('window:set-css-opacity-zero');
-            setTimeout(() => {
-                if (searchWindow && !searchWindow.isDestroyed()) searchWindow.hide();
-            }, 100);
-        } else {
-            searchWindow.show();
-            searchWindow.focus();
-            searchWindow.webContents.send('window:restore-css-opacity');
-            if (autoHideEnabled) {
-                resetInactivityTimer();
-            }
-            Analytics.trackHotkeyUse();
-            // Отправляем сигнал для воспроизведения звука
-            if (mainWindow && !mainWindow.isDestroyed()) {
-                mainWindow.webContents.send('play-sound', 'toggle');
-            }
-        }
+    if (searchWindow?.isVisible() && !searchHideTimer) {
+        hideSearchWindow();
+        return;
     }
+
+    if (!searchWindow) createSearchWindow();
+    else if (!searchWindow.webContents.isLoading()) showSearchWindow();
+    Analytics.trackHotkeyUse();
 }
 
 // ========== СИСТЕМА ГОРЯЧИХ КЛАВИШ ==========
@@ -967,6 +952,7 @@ function setupIPCHandlers() {
     ipcMain.handle('cache:clear', () => {
         fs.rmSync(cacheDir(), { recursive: true, force: true });
         cacheGeneration++;
+        pendingData.clear();
         dataCache.structure = null;
         dataCache.structureTimestamp = 0;
         dataCache.laws.clear();
@@ -989,13 +975,9 @@ function setupIPCHandlers() {
         autoUpdater.quitAndInstall(false, true);
     });
     ipcMain.on('window:minimize', () => mainWindow?.minimize());
-    ipcMain.on('window:close', () => { isQuitting = true; app.quit(); });
-    ipcMain.on('window:hide-search', () => {
-        if (searchWindow && !searchWindow.isDestroyed()) {
-            clearInactivityTimer();
-            searchWindow.webContents.send('window:set-css-opacity-zero');
-            setTimeout(() => searchWindow?.hide(), 100);
-        }
+    ipcMain.on('window:close', () => app.quit());
+    ipcMain.on('window:hide-search', (event) => {
+        if (event.sender === searchWindow?.webContents) hideSearchWindow();
     });
     ipcMain.on('window:toggle-search', toggleSearchWindow);
     
@@ -1192,7 +1174,7 @@ app.on('will-quit', () => {
 });
 
 app.on('before-quit', () => {
-    isQuitting = true;
+    cancelSearchHide();
     clearInactivityTimer();
 });
 

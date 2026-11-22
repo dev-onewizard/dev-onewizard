@@ -18,6 +18,7 @@ files:
   - '!**/test/**'
 
 win:
+  electronLanguages: [ru, en-US]
   target:
     - target: nsis
       arch: [x64]

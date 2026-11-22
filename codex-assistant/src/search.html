@@ -1,101 +1,77 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" class="overlay">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;">
-    <title>Codex Assistant — Поиск</title>
-    <link rel="stylesheet" href="css/utilities.css">
-    <link rel="stylesheet" href="css/styles.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+  <title>Codex Assistant — Поиск</title>
+  <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<div class="w-screen h-screen rounded-[10px] overflow-hidden border border-[var(--border-color)] bg-primary relative flex flex-col shadow-[0_8px_24px_rgba(0,0,0,0.5)]">
-  <div class="search-titlebar window-drag-area"></div>
-  <div class="flex-1 flex flex-col px-6 pb-[50px] h-full" style="margin-top:28px; height:calc(100% - 28px); position:relative;">
-    <div class="flex gap-8 mb-5 items-center flex-shrink-0 pt-5">
-      <div class="search-input-wrapper relative flex-1 no-drag">
-        <div class="search-icon absolute left-3 top-1/2 -translate-y-1/2 w-[18px] h-[18px] pointer-events-none text-muted-t transition-colors duration-200">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M14 14L18 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <input type="text" id="search-input"
-          class="w-full h-11 bg-secondary border border-[var(--border-color-light)] rounded-lg pl-[44px] pr-8 text-primary-t text-[1.0625rem] transition-all duration-300 focus:border-accent focus:outline-none focus:bg-tertiary focus:shadow-[0_0_0_3px_var(--accent-glow)] placeholder:text-muted-t"
-          placeholder="Поиск по законам" autofocus>
-        <button id="clear-search" class="clear-search hidden no-drag absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-muted-t transition-all duration-300 cursor-pointer bg-none border-0 rounded hover:text-primary-t hover:bg-tertiary hover:scale-110" title="Очистить">
-          <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div class="tabs-container flex w-[200px] border border-[var(--border-color-light)] rounded-lg bg-secondary flex-shrink-0 no-drag">
-        <button id="tab-laws" class="tab active flex-1 py-2 px-3 text-[1.0625rem] text-primary-t font-medium bg-tertiary relative overflow-hidden transition-all duration-300 rounded-l-lg shimmer" style="position:relative;">Законы</button>
-        <button id="tab-rules" class="tab flex-1 py-2 px-3 text-[1.0625rem] text-secondary-t relative overflow-hidden transition-all duration-300 rounded-r-lg shimmer hover:text-primary-t hover:bg-tertiary" style="position:relative;">Правила</button>
-      </div>
-    </div>
-    <div class="filters-bar flex items-center justify-between mb-5 flex-shrink-0">
-      <div id="laws-filters" class="filters-group flex gap-1.5 items-center flex-wrap no-drag"></div>
+  <div class="app-frame search-frame">
+    <header class="titlebar search-titlebar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">§</span><span>Справочник Majestic RP</span></div>
+      <button id="hide-search" class="icon-button window-control" type="button" aria-label="Скрыть поиск" title="Скрыть поиск">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </header>
 
-      <div id="rules-filters" class="filters-group hidden flex gap-1.5 items-center flex-wrap no-drag">
-        <button id="rules-category-all" class="filter-button active relative overflow-hidden shimmer px-3 py-1.5 rounded-md text-[0.9375rem] text-primary-t font-medium bg-tertiary border-0 cursor-pointer transition-all duration-300 hover:text-primary-t hover:bg-tertiary hover:-translate-y-px" data-cat="all">Все</button>
-        <button id="rules-category-general" class="filter-button relative overflow-hidden shimmer px-3 py-1.5 rounded-md text-[0.9375rem] text-secondary-t bg-transparent border-0 cursor-pointer transition-all duration-300 hover:text-primary-t hover:bg-tertiary hover:-translate-y-px" data-cat="general">Основные</button>
-        <button id="rules-category-events" class="filter-button relative overflow-hidden shimmer px-3 py-1.5 rounded-md text-[0.9375rem] text-secondary-t bg-transparent border-0 cursor-pointer transition-all duration-300 hover:text-primary-t hover:bg-tertiary hover:-translate-y-px" data-cat="events">События</button>
-        <button id="rules-category-organizations" class="filter-button relative overflow-hidden shimmer px-3 py-1.5 rounded-md text-[0.9375rem] text-secondary-t bg-transparent border-0 cursor-pointer transition-all duration-300 hover:text-primary-t hover:bg-tertiary hover:-translate-y-px" data-cat="organizations">Организации</button>
-
-        <div id="subcategory-selector" class="subcategory-selector relative inline-block">
-          <button id="subcategory-button" class="subcategory-button no-drag h-9 min-w-[200px] border border-[var(--border-color-light)] rounded-lg bg-secondary flex items-center justify-between px-3 cursor-pointer text-primary-t relative overflow-hidden shimmer transition-all duration-300 hover:border-accent hover:bg-tertiary hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(223,0,91,0.15)]">
-            <span id="subcategory-text" class="text-primary-t text-[0.9375rem] whitespace-nowrap overflow-hidden text-ellipsis">Показать все</span>
-            <span class="dropdown-arrow text-secondary-t text-xs ml-1 transition-transform duration-300">▼</span>
+    <main class="search-view">
+      <div class="search-toolbar">
+        <div class="search-field">
+          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></svg>
+          <input id="search-input" type="search" aria-label="Поиск по справочнику" placeholder="Поиск по законам" autocomplete="off" autofocus>
+          <button id="clear-search" class="icon-button clear-search hidden" type="button" aria-label="Очистить запрос" title="Очистить запрос">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg>
           </button>
-          <div id="subcategory-dropdown" class="subcategory-dropdown hidden absolute top-[calc(100%+4px)] left-0 w-full border border-[var(--border-color-light)] rounded-lg bg-tertiary z-[100] max-h-[250px] overflow-y-auto shadow-[0_8px_24px_rgba(0,0,0,0.4)] custom-scroll" style="animation:dropdownFade 0.25s var(--transition-bounce);">
-            <div id="subcategory-all" class="subcategory-item active relative overflow-hidden shimmer py-2 px-3 text-primary-t text-[0.9375rem] cursor-pointer transition-all duration-300 border-b border-[var(--border-color)] bg-elevated font-medium" style="border-left:2px solid var(--accent-primary);">Показать все</div>
-            <div id="subcategories-list"></div>
+        </div>
+        <nav class="segmented search-tabs" aria-label="База поиска">
+          <button id="tab-laws" class="active" type="button" aria-pressed="true">Законы</button>
+          <button id="tab-rules" type="button" aria-pressed="false">Правила</button>
+        </nav>
+      </div>
+
+      <div class="search-filters">
+        <div id="laws-filters" class="filters-group" aria-label="Разделы законов"></div>
+        <div id="rules-filters" class="filters-group hidden" aria-label="Категории правил">
+          <button class="filter-button active" type="button" data-cat="all">Все</button>
+          <button class="filter-button" type="button" data-cat="general">Основные</button>
+          <button class="filter-button" type="button" data-cat="events">События</button>
+          <button class="filter-button" type="button" data-cat="organizations">Организации</button>
+          <div id="subcategory-selector" class="picker hidden">
+            <button id="subcategory-button" class="picker-button" type="button" aria-expanded="false" aria-controls="subcategory-dropdown"><span id="subcategory-text">Показать все</span><span class="chevron" aria-hidden="true"></span></button>
+            <div id="subcategory-dropdown" class="dropdown hidden">
+              <button id="subcategory-all" class="subcategory-item active" type="button">Показать все</button>
+              <div id="subcategories-list"></div>
+            </div>
           </div>
         </div>
-      </div>
-      <div id="search-server-selector" class="server-selector small no-drag relative w-[200px]">
-        <button id="search-server-button"
-          class="server-selector-button h-10 w-full border border-[var(--border-color-light)] rounded-lg bg-secondary flex items-center justify-between px-3 cursor-pointer text-primary-t text-[0.9375rem] relative overflow-hidden shimmer transition-all duration-300 disabled:opacity-50 disabled:cursor-default hover:[&:not(:disabled)]:border-accent hover:[&:not(:disabled)]:bg-tertiary hover:[&:not(:disabled)]:-translate-y-px hover:[&:not(:disabled)]:shadow-[0_4px_12px_rgba(223,0,91,0.15)]"
-          disabled>
-          <span id="search-server-name" class="server-name flex items-center gap-2">
-            <span id="search-server-icon" class="server-icon"></span>
-            <span id="search-server-text">Загрузка...</span>
-          </span>
-          <span class="dropdown-arrow text-secondary-t text-xs ml-1 transition-transform duration-300">▼</span>
-        </button>
-        <div id="search-server-dropdown" class="server-dropdown hidden absolute top-[calc(100%+4px)] left-0 right-0 border border-[var(--border-color-light)] rounded-lg bg-tertiary z-[100] max-h-[250px] overflow-y-auto shadow-[0_8px_24px_rgba(0,0,0,0.4)] custom-scroll" style="animation:dropdownFade 0.25s var(--transition-bounce);">
-          <div id="search-servers-list"></div>
+        <div id="search-server-selector" class="picker search-server">
+          <button id="search-server-button" class="picker-button" type="button" aria-expanded="false" aria-controls="search-server-dropdown" disabled>
+            <span class="server-name"><span id="search-server-icon" class="server-icon"></span><span id="search-server-text">Загрузка…</span></span>
+            <span class="chevron" aria-hidden="true"></span>
+          </button>
+          <div id="search-server-dropdown" class="dropdown hidden"><div id="search-servers-list"></div></div>
         </div>
       </div>
-    </div>
-    <div id="results-container" class="results-container no-drag flex-1 overflow-y-auto overflow-x-hidden pr-2 scroll-smooth custom-scroll" style="margin-bottom:0;">
-      <div class="loading-message flex items-center justify-center h-full text-muted-t gap-2 flex-col" style="animation:fadeIn 0.5s ease;">
-        <div class="loading-dots"><span></span><span></span><span></span></div>
-        <span class="text-[1.0625rem]">Загрузка данных...</span>
-      </div>
-    </div>
-    <div class="search-footer absolute bottom-4 left-6 right-6 flex items-center justify-between flex-shrink-0 bg-transparent z-10">
-      <div class="footer-left flex items-center no-drag">
-        <label class="auto-hide-label flex items-center gap-2 cursor-pointer transition-opacity duration-300 hover:opacity-80">
-          <input type="checkbox" id="auto-hide-checkbox" class="auto-hide-checkbox" checked>
-          <span class="auto-hide-text text-secondary-t text-[0.8125rem]">Скрывать автоматически</span>
-        </label>
-        <a id="rules-source" class="external-link source-short hidden" href="https://github.com/alamantik/majestic-laws-db/tree/main/rules">Источник правил</a>
-      </div>
-      <div class="footer-right flex items-center gap-3 no-drag">
-        <label class="text-secondary-t text-[0.8125rem]" for="opacity-slider">Прозрачность</label>
-        <input type="range" id="opacity-slider" aria-label="Прозрачность окна поиска" class="opacity-slider" min="0" max="25" value="0" step="1">
-        <span id="opacity-value" class="range-value text-secondary-t text-[0.9375rem] whitespace-nowrap w-[35px] text-right transition-colors duration-300">0%</span>
-      </div>
-    </div>
-  </div>
-</div>
 
-<script src="js/logger.js"></script>
-<script src="js/safe-utils.js"></script>
-<script src="js/error-boundary.js"></script>
-<script src="js/app-core.js"></script>
-<script src="js/theme-manager.js"></script>
-<script src="js/sound-manager.js"></script>
-<script src="js/search-window.js"></script>
+      <div class="results-heading"><h1>Результаты</h1><span id="result-count" role="status"></span></div>
+      <section id="results-container" class="results-container" aria-label="Результаты поиска">
+        <div class="loading-message" role="status">Загрузка данных…</div>
+      </section>
+    </main>
+
+    <footer class="search-footer">
+      <label class="auto-hide-label"><input type="checkbox" id="auto-hide-checkbox" class="switch" role="switch" checked> Автоскрытие</label>
+      <a id="rules-source" class="external-link hidden" href="https://github.com/alamantik/majestic-laws-db/tree/main/rules">Источник правил</a>
+      <div class="range-control"><label for="opacity-slider">Прозрачность</label>
+        <input id="opacity-slider" type="range" min="0" max="25" value="0"><output id="opacity-value" for="opacity-slider">0%</output>
+      </div>
+    </footer>
+  </div>
+
+  <script src="js/app-core.js"></script>
+  <script src="js/sound-manager.js"></script>
+  <script src="js/search-window.js"></script>
 </body>
 </html>

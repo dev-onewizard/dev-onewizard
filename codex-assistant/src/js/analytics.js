@@ -1,19 +1,5 @@
 const { app } = require('electron');
-let uuidv4;
-
-try {
-    const { v4 } = require('uuid');
-    uuidv4 = v4;
-} catch (e) {
-    console.warn('[Analytics] Using fallback UUID generator');
-    uuidv4 = function() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-            const r = Math.random() * 16 | 0;
-            const v = c === 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
-    };
-}
+const { randomUUID } = require('node:crypto');
 
 const fetch = require('node-fetch');
 const path = require('path');
@@ -22,7 +8,7 @@ const fs = require('fs');
 const MEASUREMENT_ID = process.env.CODEX_GA_MEASUREMENT_ID;
 const API_SECRET = process.env.CODEX_GA_API_SECRET;
 
-const APP_VERSION = '1.0.5';
+const APP_VERSION = app.getVersion();
 const APP_NAME = 'Codex Assistant';
 
 let sessionStartTime = null;
@@ -39,7 +25,7 @@ function getUserId() {
         console.error('[Analytics] Failed to read user ID:', err.message);
     }
     
-    const userId = uuidv4();
+    const userId = randomUUID();
     
     try {
         const dir = path.dirname(userIdPath);

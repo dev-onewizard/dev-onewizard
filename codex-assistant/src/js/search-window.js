@@ -1,118 +1,52 @@
 // search-window.js
+const PAGE_SIZE = 20;
 const SearchState = {
     lawsData: [],
-    rulesData: { general: {}, events: {}, organizations: {} },
-    lawsCache: new (window.LRUCache || Map)(3), // LRU: макс. 3 сервера в памяти
-    
+    rulesData: {},
+    ruleGroups: {},
     activeTab: 'laws',
     lawCategory: 'all',
     ruleCategory: 'all',
     subcategory: null,
-    
     searchQuery: '',
+    highlightPattern: null,
     filteredLaws: [],
     filteredRules: [],
-    lawsLimit: 20,
-    rulesLimit: 20,
-    
-    isLoading: false,
     currentServer: null,
-    
+    servers: [],
     availableSubcategories: { general: {}, events: {}, organizations: {} },
-    
     lawsLoaded: false,
     rulesLoaded: false,
-    
-    servers: [],
-    
-    initializing: true,
-    
-    showServerSelector: true,
-    
-    scrollPositions: {
-        laws: {},
-        rules: {}
-    },
-    
-    currentCategory: null,
-    
+    rulesError: false,
     loadError: null,
-    
-    lastActivityTime: Date.now(),
-    activityCheckInterval: null,
-    isUserActive: true
+    scrollPositions: { rules: {} }
 };
 
-let activitySetupDone = false;
-
 async function initSearchWindow() {
-    console.log('[Search] Initializing...');
-    
-    // Инициализируем SoundManager если он есть
-    if (window.SoundManager && !window.SoundManager.initialized) {
-        window.SoundManager.init();
-        console.log('[Search] SoundManager initialized');
-    }
-    
-    showLoading();
-    
+    SoundManager.init();
+    setupTabs();
+    setupSearch();
+    setupFilters();
+    setupAutoHide();
+    setupOpacitySlider();
+    setupInfiniteScroll();
+    setupCopyHandlers();
+    setupServerSelector();
+    setupActivityTracking();
+    document.getElementById('hide-search').onclick = () => window.CodexAPI.window.hideSearch();
+    document.getElementById('rules-source').onclick = event => {
+        event.preventDefault();
+        window.CodexAPI.utils.openExternal(event.currentTarget.href);
+    };
+    window.CodexAPI.server.onChange(serverId => selectSearchServer(serverId, false));
+
     try {
-        Utils.clearAllCache();
-        setupTabs();
-        setupSearch();
-        setupFilters();
-        setupAutoHide();
-        setupOpacitySlider();
-        setupInfiniteScroll();
-        setupCopyHandlers();
-        document.getElementById('rules-source').onclick = event => {
-            event.preventDefault();
-            window.CodexAPI.utils.openExternal(event.currentTarget.href);
-        };
-        setupServerSelector();
-        await setupSettingsSync();
-        await loadServersList();
-        await Promise.all([loadRules(), loadLaws(SearchState.currentServer)]);
-        
-        setupActivityTracking();
-        
-        window.CodexAPI.server.onChange(async (newServerId) => {
-            console.log('[Search] Server changed to:', newServerId);
-            
-            SearchState.currentServer = newServerId;
-            updateSearchServerButton(newServerId);
-            updateServersListSelection(newServerId);
-            
-            await loadLaws(newServerId);
-        });
-        
-        const savedTab = localStorage.getItem('activeTab');
-        if (savedTab === 'laws' || savedTab === 'rules') {
-            if (savedTab === 'rules') activateRulesTab();
-        }
-        
-        if (SearchState.activeTab === 'laws') {
-            activateLawsTab();
-            if (SearchState.lawsLoaded) {
-                filterLaws();
-                renderResults();
-            }
-        } else {
-            activateRulesTab();
-            if (SearchState.rulesLoaded) {
-                filterRules();
-                renderResults();
-            }
-        }
-        
-        SearchState.initializing = false;
-        console.log('[Search] Ready');
-        
+        await Promise.all([setupSettingsSync(), loadServersList()]);
+        if (localStorage.getItem('activeTab') === 'rules') activateRulesTab();
+        else loadLaws(SearchState.currentServer);
     } catch (error) {
-        console.error('[Search] Init error:', error);
-        SearchState.loadError = error.message;
-        showError('Ошибка загрузки. Проверьте подключение к интернету.');
-        if (window.SoundManager) SoundManager.play('error');
+        console.error('[Search] Initialization failed:', error);
+        showError('Не удалось загрузить справочник. Проверьте подключение.');
     }
 }
 
@@ -121,7 +55,7 @@ async function setupSettingsSync() {
     const apply = prefs => {
         const checkbox = document.getElementById('auto-hide-checkbox');
         if (checkbox) checkbox.checked = prefs.autoHide;
-        window.ThemeManager?.applyTheme(prefs.theme);
+        Utils.applyTheme(prefs.theme);
         window.SoundManager?.setEnabled(prefs.soundEnabled);
         window.SoundManager?.setVolume(prefs.soundVolume);
         applyOpacity(prefs.opacity);
@@ -130,7 +64,7 @@ async function setupSettingsSync() {
     api.preferences.onReset(prefs => {
         for (const key of ['activeTab', 'searchQuery', 'selectedServer', 'windowOpacity', 'autoHideEnabled', 'theme', 'sound_settings']) localStorage.removeItem(key);
         SearchState.currentServer = 'new-york-1';
-        SearchState.searchQuery = '';
+        setSearchQuery('');
         SearchState.lawCategory = 'all';
         SearchState.ruleCategory = 'all';
         SearchState.subcategory = null;
@@ -138,135 +72,65 @@ async function setupSettingsSync() {
         document.getElementById('clear-search').classList.add('hidden');
         updateSearchServerButton(SearchState.currentServer);
         updateServersListSelection(SearchState.currentServer);
-        activateLawsTab();
         apply(prefs);
         loadLaws(SearchState.currentServer);
+        activateLawsTab();
     });
     api.cache.onClear(() => Utils.clearAllCache());
     apply(await api.preferences.get());
 }
 
 function setupActivityTracking() {
-    if (activitySetupDone) {
-        console.log('[Activity] Tracking already set up');
-        return;
-    }
-    
-    console.log('[Activity] Setting up activity tracking');
-    
-    const activityEvents = [
-        'mousemove', 'mousedown', 'click', 'keydown', 
-        'scroll', 'wheel', 'touchstart', 'touchmove'
-    ];
-    
-    const activityHandler = () => {
-        SearchState.lastActivityTime = Date.now();
-        SearchState.isUserActive = true;
-        
-        if (window.CodexAPI && window.CodexAPI.activity) {
-            window.CodexAPI.activity.userAction();
-        }
+    let lastReport = -Infinity;
+    const report = () => {
+        const now = performance.now();
+        if (now - lastReport < 250 || document.hidden) return;
+        lastReport = now;
+        window.CodexAPI.activity.userAction();
     };
-    
-    activityEvents.forEach(event => {
-        document.removeEventListener(event, activityHandler);
-        document.addEventListener(event, activityHandler, { passive: true });
-    });
-    
-    const searchInput = document.getElementById('search-input');
-    if (searchInput) {
-        searchInput.removeEventListener('input', activityHandler);
-        searchInput.removeEventListener('focus', activityHandler);
-        searchInput.addEventListener('input', activityHandler);
-        searchInput.addEventListener('focus', activityHandler);
-    }
-    
-    if (SearchState.activityCheckInterval) {
-        clearInterval(SearchState.activityCheckInterval);
-    }
-    
-    SearchState.activityCheckInterval = setInterval(() => {
-        const now = Date.now();
-        const inactiveTime = now - SearchState.lastActivityTime;
-        
-        if (inactiveTime > 5000) {
-            SearchState.isUserActive = false;
-        }
-    }, 1000);
-    
-    activitySetupDone = true;
-    console.log('[Activity] Tracking setup complete');
-}
 
-async function getCurrentServer() {
-    return (await window.CodexAPI.server.getCurrent()) || 'new-york-1';
+    for (const event of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart', 'touchmove', 'input']) {
+        document.addEventListener(event, report, { passive: true });
+    }
 }
 
 async function loadServersList() {
-    const [servers, current] = await Promise.all([window.CodexAPI.laws.listServers(), getCurrentServer()]);
+    const api = window.CodexAPI;
+    const [servers, current] = await Promise.all([api.laws.listServers(), api.server.getCurrent()]);
     SearchState.servers = servers;
-    SearchState.currentServer = current;
+    SearchState.currentServer = SearchState.currentServer || current || servers[0]?.id || 'new-york-1';
     renderServersDropdown();
-    updateSearchServerButton(current);
-    updateServersListSelection(current);
+    updateSearchServerButton(SearchState.currentServer);
 }
 
 function renderServersDropdown() {
     const list = document.getElementById('search-servers-list');
-    const button = document.getElementById('search-server-button');
-    
-    if (!list || !button) return;
-    
-    button.disabled = false;
-    
-    const currentServer = SearchState.currentServer || 'new-york-1';
-    
-    list.innerHTML = SearchState.servers.map(server => {
-        const icon = Utils.getServerIcon(server.id);
-        const selected = server.id === currentServer ? 'selected' : '';
-        return `<div class="server-item ${selected}" data-server-id="${server.id}">
-            <span class="server-icon">${icon}</span>
-            <span>${Utils.escapeHtml(server.name)}</span>
-        </div>`;
-    }).join('');
-    
-    list.querySelectorAll('.server-item').forEach(item => {
-        item.addEventListener('click', () => {
-            const serverId = item.dataset.serverId;
-            selectSearchServer(serverId);
-        });
-        
-        item.addEventListener('mouseenter', () => {
-            if (window.SoundManager) {
-                SoundManager.play('hover');
-            }
-        });
-    });
+    list.innerHTML = SearchState.servers.map(server => Utils.serverOption(server, SearchState.currentServer)).join('');
+    document.getElementById('search-server-button').disabled = !SearchState.servers.length;
 }
 
 function updateServersListSelection(serverId) {
-    const list = document.getElementById('search-servers-list');
-    if (!list) return;
-    
-    list.querySelectorAll('.server-item').forEach(item => {
-        item.classList.remove('selected');
-    });
-    
-    const selectedItem = list.querySelector(`.server-item[data-server-id="${serverId}"]`);
-    if (selectedItem) {
-        selectedItem.classList.add('selected');
+    for (const option of document.querySelectorAll('#search-servers-list .server-item')) {
+        const selected = option.dataset.serverId === serverId;
+        option.classList.toggle('selected', selected);
+        option.setAttribute('aria-pressed', String(selected));
     }
 }
 
-function selectSearchServer(serverId) {
-    document.getElementById('search-server-dropdown')?.classList.add('hidden');
+function selectSearchServer(serverId, save = true) {
     if (serverId === SearchState.currentServer) return;
     SearchState.currentServer = serverId;
     updateSearchServerButton(serverId);
     updateServersListSelection(serverId);
-    window.CodexAPI.server.select(serverId);
-    window.SoundManager?.play('select');
-    loadLaws(serverId);
+    if (save) {
+        window.CodexAPI.server.select(serverId);
+        SoundManager.play('select');
+    }
+    if (SearchState.activeTab === 'laws') loadLaws(serverId);
+    else {
+        lawRequest++;
+        SearchState.lawsLoaded = false;
+    }
 }
 
 function updateSearchServerButton(serverId) {
@@ -284,34 +148,26 @@ function updateSearchServerButton(serverId) {
 
 function setupServerSelector() {
     const button = document.getElementById('search-server-button');
-    const dropdown = document.getElementById('search-server-dropdown');
-    const selector = document.getElementById('search-server-selector');
-    
-    if (!button || !dropdown || !selector) return;
-    
-    button.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdown.classList.toggle('hidden');
-        if (window.SoundManager) SoundManager.play('click');
-    });
-    
-    document.addEventListener('click', (e) => {
-        if (!button.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.classList.add('hidden');
-        }
+    const menu = document.getElementById('search-server-dropdown');
+    Utils.bindDropdown(button, menu);
+    document.getElementById('search-servers-list').addEventListener('click', event => {
+        const option = event.target.closest('.server-item');
+        if (!option) return;
+        Utils.setDropdown(button, menu, false);
+        button.focus();
+        selectSearchServer(option.dataset.serverId);
     });
 }
 
 let lawRequest = 0;
 async function loadLaws(serverId) {
     const request = ++lawRequest;
-    SearchState.isLoading = true;
     SearchState.lawsLoaded = false;
     SearchState.loadError = null;
     SearchState.lawCategory = 'all';
     SearchState.lawsData = [];
     SearchState.filteredLaws = [];
-    if (!SearchState.initializing) renderResults();
+    if (SearchState.activeTab === 'laws') renderResults();
     try {
         const data = await window.CodexAPI.laws.getServerData(serverId);
         if (request !== lawRequest) return;
@@ -321,25 +177,35 @@ async function loadLaws(serverId) {
         if (request === lawRequest) SearchState.loadError = error.message;
     } finally {
         if (request === lawRequest) {
-            SearchState.isLoading = false;
             SearchState.lawsLoaded = true;
             updateLawFilters();
             filterLaws();
-            if (!SearchState.initializing) renderResults();
+            if (SearchState.activeTab === 'laws') renderResults();
         }
     }
 }
 
+let rulesRequest;
 async function loadRules() {
+    if (SearchState.rulesLoaded || rulesRequest) return;
+    SearchState.rulesError = false;
     const categories = ['general', 'events', 'organizations'];
-    const rounds = await Promise.allSettled(categories.map(category => window.CodexAPI.laws.fetchRules(category)));
-    rounds.forEach((result, index) => {
-        if (result.status === 'fulfilled' && result.value) SearchState.rulesData[categories[index]] = result.value;
-    });
-    SearchState.rulesLoaded = true;
+    rulesRequest = Promise.allSettled(categories.map(category => window.CodexAPI.laws.fetchRules(category)));
+    const rounds = await rulesRequest;
+    for (const [index, result] of rounds.entries()) {
+        if (result.status !== 'fulfilled' || !result.value) continue;
+        const category = categories[index];
+        SearchState.rulesData[category] = result.value;
+        SearchState.ruleGroups[category] = Object.values(result.value).filter(Array.isArray).flat();
+    }
+    SearchState.rulesError = !Object.keys(SearchState.rulesData).length;
+    SearchState.rulesLoaded = !SearchState.rulesError;
+    SearchState.ruleGroups.all = categories.flatMap(category => SearchState.ruleGroups[category] || []);
+    rulesRequest = null;
     updateSubcategoriesData();
+    updateSubcategorySelector(SearchState.ruleCategory);
     filterRules();
-    if (!SearchState.initializing) renderResults();
+    if (SearchState.activeTab === 'rules') renderResults();
 }
 
 function updateLawFilters() {
@@ -378,17 +244,10 @@ function updateLawFilters() {
             container.querySelectorAll('.filter-button').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             SearchState.lawCategory = btn.dataset.cat;
-            SearchState.lawsLimit = 20;
             
             filterLaws();
             renderResults();
             if (window.SoundManager) SoundManager.play('click');
-        });
-        
-        btn.addEventListener('mouseenter', () => {
-            if (window.SoundManager) {
-                SoundManager.play('hover');
-            }
         });
     });
 }
@@ -419,8 +278,6 @@ function setupFilters() {
             
             SearchState.subcategory = null;
             SearchState.ruleCategory = btn.dataset.cat;
-            SearchState.rulesLimit = 20;
-            SearchState.currentCategory = btn.dataset.cat;
             
             const subcatText = document.getElementById('subcategory-text');
             if (subcatText) {
@@ -442,40 +299,23 @@ function setupFilters() {
             
             if (window.SoundManager) SoundManager.play('click');
         });
-        
-        btn.addEventListener('mouseenter', () => {
-            if (window.SoundManager) {
-                SoundManager.play('hover');
-            }
-        });
     });
     
     const subcatBtn = document.getElementById('subcategory-button');
     const subcatDropdown = document.getElementById('subcategory-dropdown');
     
-    subcatBtn?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        subcatDropdown?.classList.toggle('hidden');
-        if (window.SoundManager) SoundManager.play('click');
-    });
-    
-    document.addEventListener('click', (e) => {
-        if (!subcatBtn?.contains(e.target) && !subcatDropdown?.contains(e.target)) {
-            subcatDropdown?.classList.add('hidden');
-        }
-    });
-    
+    Utils.bindDropdown(subcatBtn, subcatDropdown);
+
     document.getElementById('subcategory-all')?.addEventListener('click', () => {
         saveScrollPosition('rules', SearchState.ruleCategory, SearchState.subcategory);
         
         SearchState.subcategory = null;
-        SearchState.rulesLimit = 20;
         
         const subcatText = document.getElementById('subcategory-text');
         if (subcatText) subcatText.textContent = 'Показать все';
         
         const subcatDropdown = document.getElementById('subcategory-dropdown');
-        if (subcatDropdown) subcatDropdown.classList.add('hidden');
+        Utils.setDropdown(document.getElementById('subcategory-button'), subcatDropdown, false);
         
         document.querySelectorAll('.subcategory-item').forEach(i => i.classList.remove('active'));
         const subcatAll = document.getElementById('subcategory-all');
@@ -498,10 +338,10 @@ function updateSubcategorySelector(category) {
     
     if (!selector || !list || !subcatBtn || !subcatText) return;
     
-    list.innerHTML = '';
+    list.replaceChildren();
     
     if (category === 'all') {
-        selector.style.display = 'none';
+        selector.classList.add('hidden');
         subcatText.textContent = 'Показать все';
         return;
     }
@@ -509,19 +349,20 @@ function updateSubcategorySelector(category) {
     const subcats = SearchState.availableSubcategories[category] || {};
     
     if (Object.keys(subcats).length === 0) {
-        selector.style.display = 'none';
+        selector.classList.add('hidden');
         subcatText.textContent = 'Показать все';
         return;
     }
     
-    selector.style.display = 'block';
+    selector.classList.remove('hidden');
     
     if (!SearchState.subcategory) {
         subcatText.textContent = 'Показать все';
     }
     
     Object.entries(subcats).forEach(([key, name]) => {
-        const item = document.createElement('div');
+        const item = document.createElement('button');
+        item.type = 'button';
         item.className = 'subcategory-item';
         if (SearchState.subcategory === key) {
             item.classList.add('active');
@@ -539,12 +380,11 @@ function updateSubcategorySelector(category) {
             if (subcatAll) subcatAll.classList.remove('active');
             
             SearchState.subcategory = key;
-            SearchState.rulesLimit = 20;
             
             if (subcatText) subcatText.textContent = name;
             
             const subcatDropdown = document.getElementById('subcategory-dropdown');
-            if (subcatDropdown) subcatDropdown.classList.add('hidden');
+            Utils.setDropdown(document.getElementById('subcategory-button'), subcatDropdown, false);
             
             filterRules();
             renderResults();
@@ -554,113 +394,55 @@ function updateSubcategorySelector(category) {
             if (window.SoundManager) SoundManager.play('click');
         });
         
-        item.addEventListener('mouseenter', () => {
-            if (window.SoundManager) {
-                SoundManager.play('hover');
-            }
-        });
-        
         list.appendChild(item);
     });
 }
 
 function saveScrollPosition(tab, category, subcategory = null) {
     const container = document.getElementById('results-container');
-    if (!container) return;
+    if (!resultPage) return;
     
     const key = subcategory ? `${category}_${subcategory}` : category;
-    SearchState.scrollPositions[tab][key] = container.scrollTop;
+    SearchState.scrollPositions[tab][key] = { top: container.scrollTop, count: resultPage.offset };
 }
 
 function restoreScrollPosition(tab, category, subcategory = null) {
     const container = document.getElementById('results-container');
-    if (!container) return;
+    if (!resultPage) return;
     
     const key = subcategory ? `${category}_${subcategory}` : category;
-    const savedPosition = SearchState.scrollPositions[tab][key] ?? 0;
-    
-    // Двойной rAF: первый ждёт конца текущего фрейма, второй — следующего рендера
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            container.scrollTop = savedPosition;
-        });
-    });
+    const saved = SearchState.scrollPositions[tab][key];
+    if (!saved) return;
+    if (saved.count > resultPage.offset) appendResults(saved.count - resultPage.offset);
+    container.scrollTop = saved.top;
+}
+
+const searchFields = ['code', 'title', 'text', 'note', 'explanation', 'exception', 'penalty'];
+const searchIndex = new WeakMap();
+
+function matchesQuery(item, query) {
+    if (!query) return true;
+    let fields = searchIndex.get(item);
+    if (!fields) {
+        fields = searchFields.map(key => String(item[key] ?? '').toLowerCase()).join('\0');
+        searchIndex.set(item, fields);
+    }
+    return fields.includes(query);
 }
 
 function filterRules() {
-    let allRules = [];
-    
-    if (SearchState.ruleCategory === 'all') {
-        Object.values(SearchState.rulesData).forEach(category => {
-            Object.values(category).forEach(subcat => {
-                if (Array.isArray(subcat)) {
-                    allRules.push(...subcat);
-                }
-            });
-        });
-    } else {
-        const categoryData = SearchState.rulesData[SearchState.ruleCategory] || {};
-        
-        if (SearchState.subcategory) {
-            const subcat = categoryData[SearchState.subcategory];
-            if (Array.isArray(subcat)) {
-                allRules = subcat;
-            }
-        } else {
-            Object.values(categoryData).forEach(subcat => {
-                if (Array.isArray(subcat)) {
-                    allRules.push(...subcat);
-                }
-            });
-        }
-    }
-    
-    if (SearchState.searchQuery) {
-        const query = SearchState.searchQuery.toLowerCase();
-        allRules = allRules.filter(item => 
-            (item.code || '').toLowerCase().includes(query) ||
-            (item.title || '').toLowerCase().includes(query) ||
-            (item.text || '').toLowerCase().includes(query) ||
-            (item.note || '').toLowerCase().includes(query) ||
-            (item.explanation || '').toLowerCase().includes(query) ||
-            (item.exception || '').toLowerCase().includes(query) ||
-            (item.penalty || '').toLowerCase().includes(query)
-        );
-    }
-    
-    SearchState.filteredRules = allRules;
-    SearchState.rulesLimit = 20;
+    const { ruleCategory, subcategory, searchQuery } = SearchState;
+    const source = subcategory ? SearchState.rulesData[ruleCategory]?.[subcategory] : SearchState.ruleGroups[ruleCategory];
+    const rules = Array.isArray(source) ? source : [];
+    const query = searchQuery.toLowerCase();
+    SearchState.filteredRules = query ? rules.filter(item => matchesQuery(item, query)) : rules;
 }
 
 function filterLaws() {
-    if (!SearchState.lawsData || SearchState.lawsData.length === 0) {
-        SearchState.filteredLaws = [];
-        return;
-    }
-    
-    let filtered = [...SearchState.lawsData];
-    
-    if (SearchState.lawCategory !== 'all') {
-        filtered = filtered.filter(item => item.section === SearchState.lawCategory);
-    }
-    
-    if (SearchState.searchQuery) {
-        const query = SearchState.searchQuery.toLowerCase();
-        filtered = filtered.filter(item => 
-            (item.code || '').toLowerCase().includes(query) ||
-            (item.title || '').toLowerCase().includes(query) ||
-            (item.text || '').toLowerCase().includes(query) ||
-            (item.explanation || '').toLowerCase().includes(query) ||
-            (item.note || '').toLowerCase().includes(query) ||
-            (item.exception || '').toLowerCase().includes(query) ||
-            (item.penalty || '').toLowerCase().includes(query)
-        );
-    }
-    
-    SearchState.filteredLaws = filtered;
-    SearchState.lawsLimit = 20;
-    
-    window.CodexAPI.analytics.search(SearchState.searchQuery, filtered.length);
+    const { lawsData, lawCategory, searchQuery } = SearchState;
+    const query = searchQuery.toLowerCase();
+    SearchState.filteredLaws = lawCategory === 'all' && !query ? lawsData : lawsData.filter(item =>
+        (lawCategory === 'all' || item.section === lawCategory) && matchesQuery(item, query));
 }
 
 function setupTabs() {
@@ -668,270 +450,167 @@ function setupTabs() {
     document.getElementById('tab-rules')?.addEventListener('click', activateRulesTab);
 }
 
+function selectTab(tab) {
+    if (SearchState.activeTab === tab) return;
+    const laws = tab === 'laws';
+    SearchState.activeTab = tab;
+    localStorage.setItem('activeTab', tab);
+    for (const [type, selected] of [['laws', laws], ['rules', !laws]]) {
+        const button = document.getElementById('tab-' + type);
+        button.classList.toggle('active', selected);
+        button.setAttribute('aria-pressed', String(selected));
+        document.getElementById(type + '-filters').classList.toggle('hidden', !selected);
+    }
+    document.getElementById('search-input').placeholder = laws ? 'Поиск по законам' : 'Поиск по правилам';
+    document.getElementById('search-server-selector').classList.toggle('hidden', !laws);
+    document.getElementById('rules-source').classList.toggle('hidden', laws);
+    SoundManager.play('toggle');
+}
+
 function activateLawsTab() {
     if (SearchState.activeTab === 'laws') return;
-    
-    SearchState.activeTab = 'laws';
-    localStorage.setItem('activeTab', 'laws');
-    
-    document.getElementById('tab-laws').classList.add('active');
-    document.getElementById('tab-rules').classList.remove('active');
-    document.getElementById('laws-filters').classList.remove('hidden');
-    document.getElementById('rules-filters').classList.add('hidden');
-    document.getElementById('search-input').placeholder = 'Поиск по законам';
-    document.getElementById('rules-source').classList.add('hidden');
-    
-    const serverSelector = document.getElementById('search-server-selector');
-    if (serverSelector) serverSelector.style.display = 'block';
-    
-    SearchState.lawsLimit = 20;
-    filterLaws();
-    renderResults();
-    
-    if (window.SoundManager) SoundManager.play('toggle');
+    selectTab('laws');
+    if (!SearchState.lawsLoaded) loadLaws(SearchState.currentServer);
+    else {
+        filterLaws();
+        renderResults();
+    }
 }
 
 function activateRulesTab() {
     if (SearchState.activeTab === 'rules') return;
-    
-    SearchState.activeTab = 'rules';
-    localStorage.setItem('activeTab', 'rules');
-    
-    document.getElementById('tab-rules').classList.add('active');
-    document.getElementById('tab-laws').classList.remove('active');
-    document.getElementById('rules-filters').classList.remove('hidden');
-    document.getElementById('laws-filters').classList.add('hidden');
-    document.getElementById('search-input').placeholder = 'Поиск по правилам';
-    document.getElementById('rules-source').classList.remove('hidden');
-    
-    const serverSelector = document.getElementById('search-server-selector');
-    if (serverSelector) serverSelector.style.display = 'none';
-    
-    SearchState.rulesLimit = 20;
+    selectTab('rules');
+    if (!SearchState.rulesLoaded) loadRules();
     filterRules();
     renderResults();
-    
-    if (SearchState.ruleCategory === 'all') {
-        const selector = document.getElementById('subcategory-selector');
-        if (selector) selector.style.display = 'none';
-    }
-    
-    if (window.SoundManager) SoundManager.play('toggle');
+}
+
+function setSearchQuery(query) {
+    SearchState.searchQuery = query;
+    const literal = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    SearchState.highlightPattern = literal ? new RegExp(literal, 'gi') : null;
 }
 
 function setupSearch() {
     const input = document.getElementById('search-input');
-    const clearBtn = document.getElementById('clear-search');
-    
-    if (!input || !clearBtn) return;
-    
-    const savedQuery = localStorage.getItem('searchQuery') || '';
-    if (savedQuery) {
-        input.value = savedQuery;
-        SearchState.searchQuery = savedQuery;
-        clearBtn.classList.remove('hidden');
-    }
-    
-    const debouncedSearch = Utils.debounce(() => {
-        SearchState.searchQuery = input.value.trim();
+    const clear = document.getElementById('clear-search');
+    input.value = localStorage.getItem('searchQuery') || '';
+    setSearchQuery(input.value.trim());
+    clear.classList.toggle('hidden', !input.value);
+
+    let searchTimer;
+    const update = () => {
+        setSearchQuery(input.value.trim());
         localStorage.setItem('searchQuery', SearchState.searchQuery);
-        
-        if (SearchState.searchQuery) {
-            clearBtn.classList.remove('hidden');
-        } else {
-            clearBtn.classList.add('hidden');
-        }
-        
-        if (SearchState.activeTab === 'laws') {
-            filterLaws();
-        } else {
-            filterRules();
-        }
-        
+        SearchState.scrollPositions.rules = {};
+        if (SearchState.activeTab === 'laws') filterLaws();
+        else filterRules();
         renderResults();
-        
-        if (window.SoundManager) SoundManager.play('tick');
-    }, 300);
-    
-    input.addEventListener('input', debouncedSearch);
-    
-    clearBtn.addEventListener('click', () => {
-        input.value = '';
-        SearchState.searchQuery = '';
-        localStorage.setItem('searchQuery', '');
-        clearBtn.classList.add('hidden');
-        
-        if (SearchState.activeTab === 'laws') {
-            filterLaws();
-        } else {
-            filterRules();
+        if (SearchState.activeTab === 'laws' && SearchState.searchQuery) {
+            window.CodexAPI.analytics.search(SearchState.searchQuery, SearchState.filteredLaws.length);
         }
-        
-        renderResults();
-        input.focus();
-        
-        if (window.SoundManager) SoundManager.play('click');
+    };
+    input.addEventListener('input', () => {
+        clear.classList.toggle('hidden', !input.value);
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(update, 120);
     });
+    clear.onclick = () => {
+        clearTimeout(searchTimer);
+        input.value = '';
+        clear.classList.add('hidden');
+        update();
+        input.focus();
+    };
 }
+
+const articleFields = [
+    ['text', 'Текст'],
+    ['explanation', 'Пояснение'],
+    ['note', 'Примечание'],
+    ['exception', 'Исключение']
+];
+const penaltyIcon = '<svg class="penalty-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.1 1.8a1 1 0 0 1 1.8 0l5.7 10.6a1 1 0 0 1-.9 1.5H2.3a1 1 0 0 1-.9-1.5L7.1 1.8zM7.4 5v4h1.2V5H7.4zm0 5.4v1.2h1.2v-1.2H7.4z" fill-rule="evenodd"/></svg>';
+
+function buildResult(item, type) {
+    const sectionKey = type === 'laws' ? 'section' : 'subcategory';
+    const section = item[sectionKey];
+    const names = type === 'laws' ? CONSTANTS.LAW_ABBR : CONSTANTS.RULE_ABBR;
+    const label = Utils.escapeHtml(names[section] || section);
+    const code = Utils.escapeHtml(item.code);
+    const highlight = value => Utils.highlightText(value, SearchState.highlightPattern);
+    let html = '<article class="result-item"><div class="result-header">' +
+        '<button type="button" class="code-badge" data-code="' + code + '" data-' + sectionKey + '="' +
+        Utils.escapeHtml(section) + '" title="Скопировать номер">' + label + ' ' + code + '</button>' +
+        '<p class="result-title">' + highlight(item.title) + '</p></div>';
+
+    for (const [field, fieldLabel] of articleFields) {
+        const value = item[field];
+        if (!value) continue;
+        const formatted = highlight(value);
+        if (String(value).length > 260 && !formatted.includes('<mark ')) {
+            html += '<details class="result-details"><summary>' + (field === 'text' ? 'Читать текст' : fieldLabel) +
+                '</summary><p class="result-text">' + formatted + '</p></details>';
+        } else {
+            if (field !== 'text') html += '<p class="note-text">' + fieldLabel + '</p>';
+            html += '<p class="result-text">' + formatted + '</p>';
+        }
+    }
+    if (item.penalty) html += '<div class="penalty-block">' + penaltyIcon + '<span>' + highlight(item.penalty) + '</span></div>';
+    return html + '</article>';
+}
+
+let resultPage;
+let resultsObserver;
 
 function renderResults() {
     const container = document.getElementById('results-container');
-    if (!container) return;
-    
-    if (SearchState.activeTab === 'laws') {
-        if (!SearchState.lawsLoaded && SearchState.isLoading) {
-            showLoading();
-            return;
-        }
-        if (SearchState.loadError && SearchState.lawsData.length === 0) {
-            showError('Ошибка загрузки данных. Проверьте подключение к интернету.');
-            return;
-        }
-        renderLaws(container);
-    } else {
-        if (!SearchState.rulesLoaded && SearchState.isLoading) {
-            showLoading();
-            return;
-        }
-        renderRules(container);
+    const count = document.getElementById('result-count');
+    resultsObserver.disconnect();
+    resultPage = null;
+    count.textContent = '';
+    container.scrollTop = 0;
+
+    const type = SearchState.activeTab;
+    const laws = type === 'laws';
+    if (laws ? SearchState.loadError : SearchState.rulesError) {
+        showError('Не удалось загрузить данные. Проверьте подключение.');
+        return;
     }
-}
-
-// ─── Shared render helpers ────────────────────────────────────────────────────
-
-const PENALTY_SVG = `<svg width="16" height="16" viewBox="0 0 297 297" class="penalty-icon">
-    <path d="M181.115,252.771h-22.731V76.845h57.057l-19.569,48.923h21.29l19.569-48.923h2.925l19.569,48.923h21.29l-19.569-48.923h1.71c5.458,0,9.883-4.426,9.883-9.884s-4.425-9.884-9.883-9.884H158.384V34.346c0-5.459-4.426-9.884-9.884-9.884s-9.884,4.425-9.884,9.884v22.731H34.345c-5.458,0-9.883,4.426-9.883,9.884s4.425,9.884,9.883,9.884h1.71l-19.569,48.923h21.29l19.569-48.923h2.925l19.569,48.923h21.29L81.56,76.845h57.057v175.927h-22.731c-5.458,0-9.884,4.425-9.884,9.883c0,5.459,4.426,9.884,9.884,9.884h65.23c5.458,0,9.884-4.425,9.884-9.884C190.999,257.196,186.573,252.771,181.115,252.771z" fill="#cc3636"/>
-    <path d="M107.73,138.616H9.884C4.426,138.616,0,143.042,0,148.5c0,32.427,26.381,58.807,58.807,58.807c32.427,0,58.808-26.38,58.808-58.807C117.614,143.042,113.188,138.616,107.73,138.616z" fill="#cc3636"/>
-    <path d="M287.116,138.616H189.27c-5.458,0-9.884,4.426-9.884,9.884c0,32.427,26.381,58.807,58.808,58.807c32.426,0,58.807-26.38,58.807-58.807C297,143.042,292.574,138.616,287.116,138.616z" fill="#cc3636"/>
-</svg>`;
-
-function buildPenaltyHTML(penaltyText) {
-    return `<div class="penalty-block">${PENALTY_SVG}<span class="penalty-text">${penaltyText}</span></div>`;
-}
-
-function buildEmptyState(title, text) {
-    return `<div class="empty-state">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="1.5">
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
-            <circle cx="12" cy="16" r="0.5" fill="#6B7280"/>
-        </svg>
-        <div class="empty-state-title">${title}</div>
-        <div class="empty-state-text">${text}</div>
-    </div>`;
-}
-
-function buildLawItemHTML(item) {
-    const abbr     = Utils.escapeHtml(CONSTANTS.LAW_ABBR[item.section] || item.section);
-    const fullName = Utils.escapeHtml(CONSTANTS.LAW_FULL[item.section] || item.section);
-    const section  = Utils.escapeHtml(item.section);
-    const code     = Utils.escapeHtml(item.code);
-    const itemId   = Utils.escapeHtml(item.id);
-    const color    = CONSTANTS.LAW_COLORS[item.section] || '#576069';
-    const textId   = `text-${item.id.replace(/[^a-zA-Z0-9-]/g, '-')}`;
-    const title    = Utils.highlightText(item.title,  SearchState.searchQuery);
-    const text     = Utils.highlightText(item.text,   SearchState.searchQuery);
-
-    let html = `<div class="result-item" data-id="${itemId}" data-section="${section}" data-code="${code}">
-        <div class="result-header">
-            <span class="code-badge" data-code="${code}" data-section="${section}"
-                  title="${code} ${fullName}" style="border-color:${color}40;color:${color};">
-                ${abbr} ${code}
-            </span>
-            <p class="result-title">${title}</p>
-        </div>
-        <div id="${textId}" class="result-text">${text}</div>`;
-
-    for (const { field, label } of [
-        { field: 'explanation', label: 'Пояснение:' },
-        { field: 'note', label: 'Примечание:' },
-        { field: 'exception', label: 'Исключение:' }
-    ]) {
-        if (item[field]) {
-            html += `<div class="note-text">${label}</div><div class="result-text">${Utils.highlightText(item[field], SearchState.searchQuery)}</div>`;
-        }
-    }
-
-    if (item.penalty) html += buildPenaltyHTML(Utils.highlightText(item.penalty, SearchState.searchQuery));
-    html += '</div>';
-    return html;
-}
-
-function buildRuleItemHTML(item) {
-    const abbr     = Utils.escapeHtml(CONSTANTS.RULE_ABBR[item.subcategory] || item.subcategory);
-    const fullName = Utils.escapeHtml(CONSTANTS.RULE_FULL[item.subcategory] || item.subcategory);
-    const subcategory = Utils.escapeHtml(item.subcategory);
-    const code     = Utils.escapeHtml(item.code);
-    const itemId   = Utils.escapeHtml(item.id);
-    const color    = '#576069';
-    const title    = Utils.highlightText(item.title, SearchState.searchQuery);
-
-    let html = `<div class="result-item" data-id="${itemId}" data-subcategory="${subcategory}" data-code="${code}">
-        <div class="result-header">
-            <span class="code-badge" data-code="${code}" data-subcategory="${subcategory}"
-                  title="${code} ${fullName}" style="border-color:${color}40;color:${color};">
-                ${abbr} ${code}
-            </span>
-            <p class="result-title">${title}</p>
-        </div>`;
-
-    const extras = [
-        { field: 'note',        label: 'Примечание:',  idPrefix: 'note' },
-        { field: 'explanation', label: 'Пояснение:',   idPrefix: 'exp'  },
-        { field: 'exception',   label: 'Исключение:',  idPrefix: 'exc'  },
-    ];
-    for (const { field, label, idPrefix } of extras) {
-        if (item[field]) {
-            const id = `${idPrefix}-${item.id.replace(/[^a-zA-Z0-9-]/g, '-')}`;
-            html += `<div class="note-text">${label}</div>
-                     <div id="${id}" class="result-text">${Utils.highlightText(item[field], SearchState.searchQuery)}</div>`;
-        }
-    }
-
-    if (item.text) {
-        html += `<div class="result-text">${Utils.highlightText(item.text, SearchState.searchQuery)}</div>`;
-    }
-
-    if (item.penalty) html += buildPenaltyHTML(Utils.highlightText(item.penalty, SearchState.searchQuery));
-    html += '</div>';
-    return html;
-}
-
-// ─── Render functions ─────────────────────────────────────────────────────────
-
-function renderLaws(container) {
-    if (!SearchState.filteredLaws || SearchState.filteredLaws.length === 0) {
-        container.innerHTML = buildEmptyState('Законов не найдено', 'Попробуйте изменить параметры поиска');
+    if (laws ? !SearchState.lawsLoaded : !SearchState.rulesLoaded) {
+        container.innerHTML = '<div class="loading-message" role="status">Загрузка данных…</div>';
         return;
     }
 
-    const toShow = SearchState.filteredLaws.slice(0, SearchState.lawsLimit);
-    let html = '<div class="laws-list">' + toShow.map(buildLawItemHTML).join('');
-
-    if (SearchState.filteredLaws.length > SearchState.lawsLimit) {
-        html += '<div class="infinite-scroll-trigger"><div class="loading-dots"><span></span><span></span><span></span></div></div>';
-    }
-
-    container.innerHTML = html + '</div>';
-    requestAnimationFrame(() => { if (container.isConnected) Utils.setupCollapsible(toShow); });
-}
-
-function renderRules(container) {
-    if (!SearchState.filteredRules || SearchState.filteredRules.length === 0) {
-        container.innerHTML = buildEmptyState('Правил не найдено', 'Попробуйте изменить параметры поиска');
+    const items = laws ? SearchState.filteredLaws : SearchState.filteredRules;
+    count.textContent = 'Найдено: ' + items.length;
+    if (!items.length) {
+        container.innerHTML = '<div class="empty-state"><p class="empty-state-title">Ничего не найдено</p>' +
+            '<p>Измените запрос или выберите другой раздел.</p></div>';
         return;
     }
 
-    const toShow = SearchState.filteredRules.slice(0, SearchState.rulesLimit);
-    let html = '<div class="rules-list">' + toShow.map(buildRuleItemHTML).join('');
-
-    if (SearchState.filteredRules.length > SearchState.rulesLimit) {
-        html += '<div class="infinite-scroll-trigger"><div class="loading-dots"><span></span><span></span><span></span></div></div>';
-    }
-
-    container.innerHTML = html + '</div>';
-    requestAnimationFrame(() => { if (container.isConnected) Utils.setupCollapsible(toShow); });
+    const list = document.createElement('div');
+    list.className = 'results-list';
+    const end = document.createElement('div');
+    end.className = 'infinite-scroll-trigger';
+    end.setAttribute('aria-hidden', 'true');
+    container.replaceChildren(list, end);
+    resultPage = { items, type, list, end, offset: 0 };
+    appendResults();
+    if (resultPage.offset < items.length) resultsObserver.observe(end);
 }
 
+function appendResults(count = PAGE_SIZE) {
+    const { items, type, list, end, offset } = resultPage;
+    const next = Math.min(offset + count, items.length);
+    list.insertAdjacentHTML('beforeend', items.slice(offset, next).map(item => buildResult(item, type)).join(''));
+    resultPage.offset = next;
+    if (next === items.length) {
+        resultsObserver.unobserve(end);
+        end.remove();
+    }
+}
 
 function setupCopyHandlers() {
     document.addEventListener('click', async (e) => {
@@ -984,71 +663,36 @@ function setupAutoHide() {
     };
 }
 
-let currentTransparency = 0;
 function setupOpacitySlider() {
     const slider = document.getElementById('opacity-slider');
-    slider.oninput = () => {
-        const opacity = Number(slider.value);
-        applyOpacity(opacity);
-        window.CodexAPI.preferences.save({ opacity }).catch(() => {
+slider.oninput = () => applyOpacity(Number(slider.value));
+    slider.onchange = () => {
+        window.CodexAPI.preferences.save({ opacity: Number(slider.value) }).catch(() => {
             AppToast.show('Не удалось сохранить прозрачность', 'error');
         });
     };
     window.CodexAPI.utils.on('window:set-css-opacity-zero', () => {
-        document.documentElement.style.opacity = '0';
+        document.documentElement.dataset.overlayHidden = '';
     });
-    window.CodexAPI.utils.on('window:restore-css-opacity', () => applyOpacity(currentTransparency));
+    window.CodexAPI.utils.on('window:restore-css-opacity', () => {
+        delete document.documentElement.dataset.overlayHidden;
+        document.getElementById('search-input').focus();
+    });
 }
 
 function applyOpacity(value) {
-    currentTransparency = value;
     Utils.renderRange(document.getElementById('opacity-slider'), document.getElementById('opacity-value'), value);
-    document.documentElement.style.opacity = 1 - value / 100;
+    document.documentElement.style.setProperty('--overlay-opacity', String(1 - value / 100));
 }
 
 function setupInfiniteScroll() {
-    const container = document.getElementById('results-container');
-    if (!container) return;
-    
-    let ticking = false;
-    
-    container.addEventListener('scroll', () => {
-        if (!ticking) {
-            requestAnimationFrame(() => {
-                const { scrollTop, scrollHeight, clientHeight } = container;
-                
-                if (scrollHeight - (scrollTop + clientHeight) < 200) {
-                    if (SearchState.activeTab === 'laws') {
-                        if (SearchState.lawsLimit < SearchState.filteredLaws.length) {
-                            SearchState.lawsLimit += 20;
-                            renderResults();
-                        }
-                    } else {
-                        if (SearchState.rulesLimit < SearchState.filteredRules.length) {
-                            SearchState.rulesLimit += 20;
-                            renderResults();
-                        }
-                    }
-                }
-                
-                ticking = false;
-            });
-            
-            ticking = true;
-        }
-    });
-}
-
-function showLoading() {
-    const container = document.getElementById('results-container');
-    if (container) {
-        container.innerHTML = `
-            <div class="loading-message">
-                <div class="loading-dots"><span></span><span></span><span></span></div>
-                <span>Загрузка...</span>
-            </div>
-        `;
-    }
+    resultsObserver = new IntersectionObserver(entries => {
+        if (!resultPage || !entries.some(entry => entry.target === resultPage.end && entry.isIntersecting)) return;
+        const { end, items } = resultPage;
+        resultsObserver.unobserve(end);
+        appendResults();
+        if (resultPage.offset < items.length) resultsObserver.observe(end);
+    }, { root: document.getElementById('results-container'), rootMargin: '0px 0px 150px' });
 }
 
 function showError(message) {
@@ -1066,25 +710,6 @@ function showError(message) {
         `;
     }
 }
-
-window.debugReloadLaws = async function() {
-    console.log('[Debug] Force reloading laws...');
-    
-    if (window.Utils && window.Utils.clearAllCache) {
-        window.Utils.clearAllCache();
-    }
-    
-    SearchState.lawsCache.clear();
-    SearchState.lawsData = [];
-    SearchState.filteredLaws = [];
-    SearchState.lawsLoaded = false;
-    
-    const serverId = await getCurrentServer();
-    await loadLaws(serverId);
-    
-    console.log('[Debug] Reload complete');
-    if (window.SoundManager) SoundManager.play('success');
-};
 
 document.addEventListener('DOMContentLoaded', () => {
     initSearchWindow();

@@ -52,7 +52,6 @@
         async init() {
             if (this.initialized) return;
             this.initialized = true;
-            Utils.clearAllCache();
             api.preferences.onChange(settings => this.render(settings));
             api.preferences.onReset(settings => this.render(settings));
             api.cache.onClear(() => this.updateCacheSize());
@@ -101,8 +100,8 @@
             const value = el(id + '-value');
             slider.oninput = () => {
                 Utils.renderRange(slider, value, slider.value);
-                this.save({ [key]: Number(slider.value) });
             };
+            slider.onchange = () => this.save({ [key]: Number(slider.value) });
         },
 
         async save(changes) {
@@ -111,7 +110,7 @@
         },
 
         render(settings) {
-            window.ThemeManager?.applyTheme(settings.theme);
+            Utils.applyTheme(settings.theme);
             window.SoundManager?.setEnabled(settings.soundEnabled);
             window.SoundManager?.setVolume(settings.soundVolume);
             el('settings-theme-text').textContent = settings.theme === 'light' ? 'Светлая' : 'Тёмная';
@@ -126,10 +125,8 @@
             try {
                 const { version } = await api.app.getInfo();
                 el('settings-current-version').textContent = version;
-                el('about-version').textContent = version;
             } catch {
                 el('settings-current-version').textContent = 'Недоступно';
-                el('about-version').textContent = '—';
             }
         },
 
