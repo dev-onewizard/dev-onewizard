@@ -85,7 +85,8 @@ input, textarea, .result-text, .article-description, .update-item-text, .selecta
 
 .server-icon { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; transition: transform 0.3s var(--transition-bounce); }
 .server-selector-button:hover .server-icon { transform: scale(1.1); }
-.server-icon svg { width: 18px; height: 18px; }
+.server-icon svg, .server-icon img { width: 18px; height: 18px; }
+.server-icon img { display: block; object-fit: contain; }
 .server-icon svg path { fill: currentColor; }
 .server-icon svg[data-city="new-york"] { color: var(--server-new-york); }
 .server-icon svg[data-city="detroit"] { color: var(--server-detroit); }
@@ -104,8 +105,6 @@ input, textarea, .result-text, .article-description, .update-item-text, .selecta
 .server-icon svg[data-city="phoenix"] { color: var(--server-phoenix); }
 .server-icon svg[data-city="denver"] { color: var(--server-denver); }
 .server-icon svg[data-city="portland"] { color: var(--server-portland); }
-.server-icon svg[data-city="orlando"] { color: #57c2a7; }
-.server-icon svg[data-city="memphis"] { color: #bb99ff; }
 .server-icon svg[data-city="empty"] { color: var(--text-muted); }
 
 .shimmer { position: relative; overflow: hidden; }
