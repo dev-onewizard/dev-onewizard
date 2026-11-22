@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-project="majestic">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -21,7 +21,14 @@
       </div>
     </header>
 
-    <main id="main-content" class="home-view">
+    <section id="startup-screen" class="startup-screen" aria-label="Запуск">
+      <div class="startup-content">
+        <img src="../assets/Icon/icon.png" class="brand-mark" alt="">
+        <h1>Codex Assistant</h1>
+        <p role="status"><span class="startup-spinner" aria-hidden="true"></span> Проверяем обновления…</p>
+      </div>
+    </section>
+    <main id="main-content" class="home-view hidden">
       <section class="project-overview" aria-labelledby="home-title">
         <h1 id="home-title">Проекты</h1>
         <div id="project-grid" class="project-grid">
@@ -45,13 +52,13 @@
             <span class="project-art">
               <img class="project-image project-image-muted" src="../assets/projects/russia-online-mono.jpg" alt="">
               <img class="project-image project-image-color" src="../assets/projects/russia-online.jpg" alt="">
-              <span class="project-status">Скоро</span>
+              <span class="project-status" hidden>Скоро</span>
             </span>
             <strong>Россия Онлайн</strong>
           </button>
         </div>
         <div class="project-controls">
-          <div id="majestic-controls" class="field">
+          <div class="field">
             <label for="server-selector-button">Сервер</label>
             <div id="server-selector" class="picker">
               <button id="server-selector-button" class="picker-button" type="button" aria-expanded="false" aria-controls="server-dropdown" disabled>
@@ -68,19 +75,19 @@
         </div>
         <section id="ad-carousel" class="ad-carousel" aria-label="Рекламные баннеры">
           <span id="ad-placeholder">Реклама</span>
-          <a id="ad-slide" class="ad-slide" hidden><img id="ad-image" alt=""></a>
+          <a id="ad-slide" class="ad-slide" draggable="false" hidden><img id="ad-image" draggable="false" alt=""></a>
           <div id="ad-pagination" class="ad-pagination" role="group" aria-label="Выбор баннера" hidden></div>
         </section>
         <nav class="quick-links" aria-label="Ссылки">
           <a id="link-telegram" href="https://t.me/one1_wizard" class="icon-button link-icon" aria-label="Telegram" data-tooltip="Telegram"><span class="social-mark social-telegram" aria-hidden="true"></span></a>
-          <button id="links-button" class="icon-button" type="button" aria-label="Ещё ссылки" aria-expanded="false" aria-controls="links-dropdown" data-tooltip="Ещё">
-            <span class="more-links-icon" aria-hidden="true"></span>
-          </button>
           <div id="links-dropdown" class="links-dropdown hidden">
             <a id="link-github" href="https://github.com/dev-onewizard/dev-onewizard/tree/main/codex-assistant" class="icon-button link-icon" aria-label="GitHub" data-tooltip="GitHub"><span class="social-mark social-github" aria-hidden="true"></span></a>
             <a id="link-vk" href="https://vk.com/wizard_dev" class="icon-button link-icon" aria-label="ВКонтакте" data-tooltip="ВКонтакте"><span class="social-mark social-vk" aria-hidden="true"></span></a>
             <a id="donate" href="https://www.donationalerts.com/r/wizard_dev" class="icon-button link-icon" aria-label="Поддержать проект" data-tooltip="Поддержать проект"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></a>
           </div>
+          <button id="links-button" class="icon-button" type="button" aria-label="Ещё ссылки" aria-expanded="false" aria-controls="links-dropdown" data-tooltip="Ещё">
+            <span class="more-links-icon" aria-hidden="true"></span>
+          </button>
         </nav>
       </section>
       <aside class="home-sidebar" aria-labelledby="history-title">

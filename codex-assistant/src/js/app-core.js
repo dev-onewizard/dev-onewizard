@@ -116,6 +116,7 @@
         },
 
         getServerIcon(serverId) {
+            if (/^ro[123]$/.test(serverId)) return '<img src="../assets/servers/' + serverId + '.svg" alt="">';
             if (serverId === 'orlando-18') return '<img src="../assets/servers/ru18.svg" alt="">';
             if (serverId === 'memphis-19') return '<img src="../assets/servers/ru19.svg" alt="">';
 
@@ -165,6 +166,10 @@
             this.timer = setTimeout(() => toast.classList.remove('is-visible'), type === 'info' ? 4200 : 2400);
         }
     };
+
+    document.addEventListener('dragstart', event => {
+        if (event.target.closest?.('img, .ad-slide')) event.preventDefault();
+    });
 
     window.CONSTANTS = CONSTANTS;
     window.Utils = Utils;

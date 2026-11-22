@@ -174,11 +174,11 @@
                 development: 'Новую версию можно скачать вручную.',
                 manual: 'Новую версию можно скачать вручную.'
             };
-            el('settings-update-mode').textContent = help[mode];
+            el('settings-update-mode').textContent = state === 'current'
+                ? `Установлена последняя версия (${current}).` : help[mode];
 
             const messages = {
                 checking: 'Проверяем наличие обновлений…',
-                current: `Обновлений нет. Текущая версия ${current}.`,
                 available: `Доступна версия ${latest}.`,
                 downloading: `Загружается версия ${latest}${percent === undefined ? '…' : ` — ${percent}%`}`,
                 downloaded: `Версия ${latest} готова к установке.`,
@@ -187,7 +187,7 @@
                 'download-error': 'Не удалось скачать обновление. Попробуйте ещё раз.',
                 'install-error': 'Не удалось запустить установку. Попробуйте ещё раз.'
             };
-            el('settings-update-info').classList.toggle('hidden', state === 'idle');
+            el('settings-update-info').classList.toggle('hidden', state === 'idle' || state === 'current');
             el('settings-update-message').textContent = messages[state] || '';
             el('settings-check-updates').disabled = ['checking', 'downloading', 'installing'].includes(state);
             el('settings-install-update').classList.toggle('hidden', !['downloaded', 'install-error'].includes(state));

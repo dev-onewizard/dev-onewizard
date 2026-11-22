@@ -2,6 +2,7 @@
 const MainState = {
     servers: [],
     selectedServer: '',
+    project: null,
     currentHotkey: 'Ctrl+Shift+K',
     isEditing: false,
     activeMainTab: 'main'
@@ -10,8 +11,9 @@ const MainState = {
 const projects = {
     majestic: { name: 'Majestic RP', available: true },
     gta5rp: { name: 'GTA 5 RP', available: false },
-    'russia-online': { name: 'Россия Онлайн', available: false }
+    'russia-online': { name: 'Россия Онлайн', available: true }
 };
+let serverListRequest = 0;
 
 async function initMainWindow() {
     console.log('[Main] Initializing...');
@@ -19,7 +21,6 @@ async function initMainWindow() {
     setupWindowControls();
     setupMainTabs();
     setupProjectChooser();
-    selectProject('majestic');
     setupServerDropdown();
     
     setupEventListeners();
@@ -29,17 +30,38 @@ async function initMainWindow() {
         window.SoundManager.init();
     }
     
-    if (window.SettingsManager) await window.SettingsManager.init();
+    const settingsReady = window.SettingsManager?.init();
+    setupStartupScreen();
     
     window.CodexAPI.preferences.onReset(() => {
         loadHotkey();
-        MainState.selectedServer = 'new-york-1';
-        updateServerButton();
-        renderServersList();
+        MainState.project = null;
+        selectProject('majestic', false);
     });
     loadHotkey();
-    await Promise.all([loadUpdatesHistory(), loadServers().then(loadSelectedServer)]);
+    const project = await window.CodexAPI.project.get().catch(() => 'majestic');
+    await Promise.all([settingsReady, loadUpdatesHistory(), MainState.project ? undefined : selectProject(project, false)]);
     console.log('[Main] Ready');
+}
+
+function setupStartupScreen() {
+    const api = window.CodexAPI.updates;
+    const splash = document.getElementById('startup-screen');
+    const projectsView = document.getElementById('main-content');
+    const timer = setTimeout(reveal, 4000);
+    const unsubscribe = api.onStatus(onStatus);
+    api.checkOnStartup().then(onStatus, reveal);
+
+    function onStatus({ state }) {
+        if (state !== 'checking') reveal();
+    }
+    function reveal() {
+        if (splash.hidden) return;
+        clearTimeout(timer);
+        unsubscribe();
+        splash.hidden = true;
+        projectsView.classList.remove('hidden');
+    }
 }
 
 function setupMainTabs() {
@@ -110,74 +132,59 @@ function setupProjectChooser() {
     });
 }
 
-function selectProject(id) {
+function selectProject(id, save = true) {
     if (!Object.hasOwn(projects, id)) return;
     const project = projects[id];
     if (!project.available) {
-        AppToast.show(project.name + ' — справочник появится позже. Горячая клавиша пока открывает поиск Majestic RP.', 'info');
+        AppToast.show(project.name + ' — справочник появится позже.', 'info');
         return;
     }
-
+    if (MainState.project === id) return;
+    MainState.project = id;
+    if (save) window.CodexAPI.project.select(id);
     document.documentElement.dataset.project = id;
 
     for (const card of document.querySelectorAll('.project-card')) {
         card.setAttribute('aria-pressed', String(card.dataset.project === id));
     }
 
-    document.getElementById('majestic-controls').classList.toggle('hidden', id !== 'majestic');
+    return loadServers(id);
 }
 
-async function loadServers() {
+async function loadServers(project) {
+    const request = ++serverListRequest;
+    const api = window.CodexAPI.server;
     const button = document.getElementById('server-selector-button');
     const serverText = document.getElementById('server-text');
-    
+    const dropdown = document.getElementById('server-dropdown');
+    Utils.setDropdown(button, dropdown, false);
+    button.disabled = true;
+    MainState.servers = [];
+    MainState.selectedServer = '';
+    document.getElementById('server-icon').replaceChildren();
+    serverText.textContent = 'Загрузка…';
+
     try {
-        const servers = await window.CodexAPI.laws.listServers();
-        if (servers && servers.length > 0) {
-            MainState.servers = servers;
-            renderServersList();
-            button.disabled = false;
+        const [servers, current] = await Promise.all([api.list(project), api.getCurrent(project)]);
+        if (request !== serverListRequest) return;
+        MainState.servers = servers;
+        if (!servers.length) return;
+        if (!servers.some(server => server.id === MainState.selectedServer)) {
+            MainState.selectedServer = servers.find(server => server.id === current)?.id || servers[0].id;
         }
+        updateServerButton();
+        renderServersList();
+        button.disabled = false;
     } catch (error) {
         console.error('[Main] Failed to load servers:', error);
-        if (!MainState.servers.length) {
-            serverText.textContent = 'Ошибка загрузки';
-        }
+    } finally {
+        if (request === serverListRequest && button.disabled) serverText.textContent = 'Список недоступен';
     }
 }
 
 function renderServersList() {
     const list = document.getElementById('servers-list');
     list.innerHTML = MainState.servers.map(server => Utils.serverOption(server, MainState.selectedServer)).join('');
-}
-
-async function loadSelectedServer() {
-    try {
-        const serverId = await window.CodexAPI.server.getCurrent();
-        if (serverId) {
-            MainState.selectedServer = serverId;
-            localStorage.setItem('selectedServer', serverId);
-        }
-    } catch (error) {
-        console.error('[Main] Failed to get current server:', error);
-    }
-    
-    if (!MainState.selectedServer) {
-        const saved = localStorage.getItem('selectedServer');
-        const defaultServer = MainState.servers.find(s => s.id.includes('los-angeles-7')) || 
-                              MainState.servers.find(s => s.id.includes('los-angeles')) ||
-                              MainState.servers[0];
-        
-        if (saved && MainState.servers.some(s => s.id === saved)) {
-            MainState.selectedServer = saved;
-        } else if (defaultServer) {
-            MainState.selectedServer = defaultServer.id;
-            localStorage.setItem('selectedServer', defaultServer.id);
-        }
-    }
-    
-    updateServerButton();
-    renderServersList();
 }
 
 function updateServerButton() {
@@ -213,12 +220,10 @@ function selectServer(serverId) {
     if (serverId === MainState.selectedServer) return;
     
     MainState.selectedServer = serverId;
-    localStorage.setItem('selectedServer', serverId);
-    
     updateServerButton();
     renderServersList();
     
-    window.CodexAPI.server.select(serverId);
+    window.CodexAPI.server.select(serverId, MainState.project);
 
 }
 
@@ -443,12 +448,14 @@ function showUpdateModal(version) {
 }
 
 function setupEventListeners() {
-    window.CodexAPI.server.onChange(serverId => {
-        if (serverId === MainState.selectedServer) return;
-        MainState.selectedServer = serverId;
-        updateServerButton();
-        renderServersList();
-    });
+    for (const project of ['majestic', 'russia-online']) {
+        window.CodexAPI.server.onChange(serverId => {
+            if (project !== MainState.project || serverId === MainState.selectedServer) return;
+            MainState.selectedServer = serverId;
+            updateServerButton();
+            renderServersList();
+        }, project);
+    }
 
     const modal = document.getElementById('update-modal');
     const close = () => modal.close();
@@ -462,6 +469,11 @@ function setupEventListeners() {
     const linksButton = document.getElementById('links-button');
     const linksMenu = document.getElementById('links-dropdown');
     Utils.bindDropdown(linksButton, linksMenu);
+    linksButton.addEventListener('click', event => {
+        if (event.detail === 0 && !linksMenu.classList.contains('hidden')) {
+            linksMenu.querySelector('a')?.focus();
+        }
+    });
     for (const link of document.querySelectorAll('.link-icon, .external-link')) {
         link.addEventListener('click', event => {
             event.preventDefault();

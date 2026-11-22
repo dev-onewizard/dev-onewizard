@@ -11,8 +11,8 @@
   --muted: #b0b1b7;
   --accent: #d3d4d9;
   --accent-text: var(--accent);
-  --accent-hover: #eff0f3;
   --on-accent: #111213;
+  --solid-accent: #b52055;
   --accent-tint: #303238;
   --toast-surface: #303136;
   --success: #97e5ba;
@@ -38,7 +38,6 @@
   --muted: #575b65;
   --accent: #3c3650;
   --accent-text: var(--accent);
-  --accent-hover: #544a6a;
   --on-accent: #fff;
   --accent-tint: #efecf6;
   --toast-surface: #fff;
@@ -50,14 +49,14 @@
   --shadow: 0 10px 24px #20163020;
 }
 
-[data-project="majestic"] { --project-accent: #e81c5a; }
-[data-project="gta5rp"] { --project-accent: #ff7a2f; }
-[data-project="russia-online"] { --project-accent: #e73f3d; }
+[data-project="majestic"] { --project-accent: #e81c5a; --project-button: #d81450; }
+[data-project="gta5rp"] { --project-accent: #ff7a2f; --project-button: #b34c12; }
+[data-project="russia-online"] { --project-accent: #e73f3d; --project-button: #cc3034; }
 
 :root[data-project] {
   --accent: var(--project-accent);
+  --solid-accent: var(--project-button);
   --accent-text: color-mix(in srgb, var(--accent) 62%, white);
-  --accent-hover: color-mix(in srgb, var(--accent) 84%, white);
   --on-accent: #080508;
   --accent-tint: color-mix(in srgb, var(--accent) 17%, var(--surface));
 }
@@ -76,6 +75,7 @@ button:disabled { cursor: default; opacity: .55; }
 a { color: inherit; }
 p, h1, h2, h3, ul { margin: 0; }
 svg { display: block; }
+img, .ad-slide { -webkit-user-drag: none; }
 .hidden, [hidden] { display: none !important; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 ::selection { color: var(--on-accent); background: var(--accent); }
@@ -105,6 +105,23 @@ svg { display: block; }
 }
 
 .titlebar :is(button, nav) { -webkit-app-region: no-drag; }
+.app-frame:has(#startup-screen:not([hidden])) :is(.main-tabs, .titlebar .brand) { visibility: hidden; }
+
+.startup-screen { flex: 1; display: grid; place-items: center; padding: 0 18px 56px; }
+.startup-content { display: grid; justify-items: center; gap: 10px; text-align: center; }
+.startup-content .brand-mark { width: 55px; height: 55px; }
+.startup-content h1 { font-size: 26px; font-weight: 700; letter-spacing: -.03em; }
+.startup-content p { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.startup-spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: startup-spin 750ms linear infinite;
+}
+@keyframes startup-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .startup-spinner { animation: none; } }
 
 .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 700; letter-spacing: -.025em; white-space: nowrap; }
 .brand-mark { width: 29px; height: 29px; object-fit: contain; }
@@ -202,7 +219,6 @@ svg { display: block; }
 }
 .project-card strong { color: var(--ink); font-size: .94rem; line-height: 1.2; font-weight: 650; }
 .project-card:active { transform: scale(.98); }
-.project-card[aria-pressed="true"] strong { color: var(--accent-text); }
 .project-card:focus-visible { outline-color: var(--project-accent); }
 .project-art {
   position: relative;
@@ -212,7 +228,9 @@ svg { display: block; }
   overflow: hidden;
   border-radius: 11px;
   background: var(--surface);
+  transition: box-shadow var(--enter) var(--ease);
 }
+.project-card[aria-pressed="true"] .project-art { box-shadow: 0 0 13px color-mix(in srgb, var(--project-accent) 28%, transparent); }
 .project-image {
   position: absolute;
   inset: 0;
@@ -254,7 +272,6 @@ svg { display: block; }
 .project-controls :is(.picker-button, .hotkey-editor) { background: var(--raised); }
 .project-controls :is(.picker-button, .hotkey-editor:not(.editing)):hover { background: color-mix(in srgb, var(--ink) 12%, var(--raised)); }
 .project-controls .dropdown { max-height: 122px; }
-.project-controls:has(#majestic-controls.hidden) { grid-template-columns: minmax(0,1fr); }
 
 .home-sidebar {
   min-width: 0;
@@ -289,7 +306,7 @@ svg { display: block; }
   gap: 8px;
 }
 .release-heading h3 { font-size: .91rem; font-weight: 700; }
-.release-badge { background: var(--accent); color: var(--on-accent); }
+.release-badge { background: var(--solid-accent); color: #fff; }
 .update-date { color: var(--muted); font-size: .78rem; font-variant-numeric: tabular-nums; }
 .release-notes { display: grid; gap: 5px; margin-top: 5px; color: var(--muted); font-size: .87rem; line-height: 1.4; }
 .release-latest .release-notes { color: var(--ink); }
@@ -373,12 +390,10 @@ svg { display: block; }
 .hotkey-editor { width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hotkey-editor.editing { border-color: var(--accent-text); background: var(--accent-tint); }
 kbd { font: 600 .85rem/1.4 Consolas, "Courier New", monospace; }
-.button.primary { border-color: transparent; background: var(--accent); color: var(--on-accent); font-weight: 700; }
-.button.primary:hover { background: var(--accent-hover); }
-.button.accent { background: var(--accent-tint); color: var(--accent-text); font-weight: 650; }
-.button.accent:hover { background: color-mix(in srgb, var(--accent) 21%, var(--raised)); }
-.button.danger { background: var(--danger-tint); color: var(--danger); font-weight: 650; }
-.button.danger:hover { background: color-mix(in srgb, var(--danger) 15%, var(--danger-tint)); }
+.button:is(.primary, .accent) { background: var(--solid-accent); color: #fff; font-weight: 700; }
+.button:is(.primary, .accent):hover { background: color-mix(in srgb, var(--solid-accent) 90%, black); }
+.button.danger { background: #ad2b3e; color: #fff; font-weight: 700; }
+.button.danger:hover { background: #982437; }
 
 .external-link { color: var(--muted); font-size: .82rem; text-decoration: underline; text-underline-offset: 3px; }
 .external-link:hover { color: var(--accent-text); }
@@ -593,6 +608,8 @@ input[type="range"]::-webkit-slider-thumb {
 .filter-button:hover { color: var(--ink); background: var(--raised); }
 .filter-button.active { color: var(--accent-text); background: var(--accent-tint); }
 .search-server { width: 164px; align-self: stretch; }
+:root[data-project="russia-online"] .search-server { grid-column: 2; }
+:root[data-project="russia-online"] .results-container { margin-top: 14px; }
 .search-server .picker-button { height: 100%; }
 .search-filters .picker-button { min-height: 29px; font-size: .85rem; }
 .search-server .dropdown { right: 0; }
@@ -613,7 +630,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .result-header { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 9px; }
 .code-badge { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; padding: 4px 7px; border: 0; border-radius: 6px; background: var(--accent-tint); color: var(--accent-text); font: 700 .78rem/1.35 Consolas, "Courier New", monospace; transition: color var(--fast), background-color var(--fast); }
-.code-badge:hover, .code-badge.copied { background: var(--accent); color: var(--on-accent); }
+.code-badge:hover, .code-badge.copied { background: var(--solid-accent); color: #fff; }
 .copy-icon { width: 13px; height: 13px; fill: currentColor; }
 .result-title { margin: 0; font-weight: 650; user-select: text; }
 .result-text { margin-top: 5px; color: var(--muted); white-space: pre-wrap; user-select: text; }
@@ -719,6 +736,7 @@ body:has(#main-content:not(.hidden)) .app-toast { right: 25px; left: auto; }
 }
 @media (max-width: 440px) {
   .search-server { width: 100%; }
+  :root[data-project="russia-online"] .search-server { grid-column: 1; }
   .search-toolbar { grid-template-columns: minmax(0, 1fr); }
   .search-filters { flex-wrap: wrap; }
   .settings-card { grid-template-columns: 1fr; gap: 5px; }

@@ -1,5 +1,8 @@
 // search-window.js
 const PAGE_SIZE = 20;
+const searchProject = new URLSearchParams(window.location.search).get('project') === 'russia-online'
+    ? 'russia-online' : 'majestic';
+const isRussiaSearch = searchProject === 'russia-online';
 const SearchState = {
     lawsData: [],
     rulesData: {},
@@ -24,17 +27,36 @@ const SearchState = {
 
 async function initSearchWindow() {
     SoundManager.init();
-    setupTabs();
-    setupSearch();
-    setupFilters();
     setupAutoHide();
     setupOpacitySlider();
-    setupInfiniteScroll();
-    setupCopyHandlers();
     setupServerSelector();
     setupActivityTracking();
     document.getElementById('hide-search').onclick = () => window.CodexAPI.window.hideSearch();
-    window.CodexAPI.server.onChange(serverId => selectSearchServer(serverId, false));
+    window.CodexAPI.server.onChange(serverId => selectSearchServer(serverId, false), searchProject);
+
+    if (isRussiaSearch) {
+        document.documentElement.dataset.project = searchProject;
+        document.getElementById('search-project-name').textContent = 'Россия Онлайн';
+        document.querySelector('.search-field').hidden = true;
+        document.querySelector('.search-filters').hidden = true;
+        document.querySelector('.results-heading').hidden = true;
+        document.getElementById('results-container').innerHTML =
+            '<div class="empty-state"><p class="empty-state-title">Справочник готовится</p>' +
+            '<p>Можно выбрать сервер «Россия Онлайн».</p></div>';
+        try {
+            await Promise.all([setupSettingsSync(), loadServersList()]);
+        } catch (error) {
+            console.error('[Search] Could not load Russia Online servers:', error);
+            showError('Не удалось загрузить список серверов.');
+        }
+        return;
+    }
+
+    setupTabs();
+    setupSearch();
+    setupFilters();
+    setupInfiniteScroll();
+    setupCopyHandlers();
     let requestedTab = new URLSearchParams(window.location.search).get('tab');
     let ready = false;
     window.CodexAPI.window.onSearchTab(tab => {
@@ -72,6 +94,10 @@ async function setupSettingsSync() {
     };
     api.preferences.onChange(apply);
     api.preferences.onReset(prefs => {
+        if (isRussiaSearch) {
+            apply(prefs);
+            return;
+        }
         for (const key of ['activeTab', 'searchQuery', 'selectedServer', 'windowOpacity', 'autoHideEnabled', 'theme', 'sound_settings']) localStorage.removeItem(key);
         SearchState.currentServer = 'new-york-1';
         setSearchQuery('');
@@ -106,7 +132,7 @@ function setupActivityTracking() {
 
 async function loadServersList() {
     const api = window.CodexAPI;
-    const [servers, current] = await Promise.all([api.laws.listServers(), api.server.getCurrent()]);
+    const [servers, current] = await Promise.all([api.server.list(searchProject), api.server.getCurrent(searchProject)]);
     SearchState.servers = servers;
     SearchState.currentServer = SearchState.currentServer || current || servers[0]?.id || 'new-york-1';
     renderServersDropdown();
@@ -133,9 +159,10 @@ function selectSearchServer(serverId, save = true) {
     updateSearchServerButton(serverId);
     updateServersListSelection(serverId);
     if (save) {
-        window.CodexAPI.server.select(serverId);
+        window.CodexAPI.server.select(serverId, searchProject);
         SoundManager.play('select');
     }
+    if (isRussiaSearch) return;
     if (SearchState.activeTab === 'laws') loadLaws(serverId);
     else {
         lawRequest++;

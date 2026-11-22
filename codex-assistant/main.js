@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const fetch = require('node-fetch');
 const Analytics = require('./src/js/analytics.js');
+const RUSSIA_SERVERS = require('./assets/servers/russia-online.json');
 
 // ========== ИСТОЧНИК ДАННЫХ ==========
 const DATA_OWNER = 'dev-onewizard';
@@ -32,6 +33,7 @@ let downloadedVersion = null;
 
 let mainWindow = null;
 let searchWindow = null;
+let activeProject = 'majestic';
 let currentHotkey = 'Ctrl+Shift+K';
 let isEditingHotkey = false;
 let autoHideEnabled = true;
@@ -115,6 +117,12 @@ function updateConfig(updater) {
 
 function getPreferences() {
     return { ...DEFAULT_PREFS, ...readConfig().preferences, autoHide: autoHideEnabled };
+}
+
+function setActiveProject(project) {
+    if (project === activeProject) return;
+    activeProject = project;
+    if (searchWindow && !searchWindow.isDestroyed()) searchWindow.destroy();
 }
 
 function broadcast(channel, value) {
@@ -666,9 +674,9 @@ function createSearchWindow(tab) {
     
     searchWindow.setAlwaysOnTop(true, 'screen-saver');
     searchWindow.setVisibleOnAllWorkspaces(true);
-    searchWindow.loadFile(path.join(__dirname, 'src', 'search.html'), {
-        query: tab ? { tab } : {}
-    });
+    const query = tab ? { tab } : {};
+    if (activeProject === 'russia-online') query.project = activeProject;
+    searchWindow.loadFile(path.join(__dirname, 'src', 'search.html'), { query });
     
     if (isDev) {
         searchWindow.webContents.on('before-input-event', (event, input) => {
@@ -903,7 +911,6 @@ function setupAutoUpdater() {
             autoUpdater.autoInstallOnAppQuit = getPreferences().autoUpdate;
         });
     }
-    setTimeout(checkAutomatically, 3000).unref();
     setInterval(checkAutomatically, 60 * 60 * 1000).unref();
 }
 
@@ -957,10 +964,12 @@ function setupIPCHandlers() {
         const hotkeySet = registerToggleHotkey('Ctrl+Shift+K');
         const saved = updateConfig(config => ({
             ...config, preferences: { ...DEFAULT_PREFS }, toggleSearch: currentHotkey,
-            autoHideEnabled: true, selectedServer: 'new-york-1'
+            autoHideEnabled: true, selectedServer: 'new-york-1', russiaServer: RUSSIA_SERVERS[0].id,
+            selectedProject: 'majestic'
         }));
         if (!saved) throw Error('Settings reset failed');
         autoHideEnabled = true;
+        setActiveProject('majestic');
         lastSearchBounds = null;
         broadcast('preferences:reset', { ...getPreferences(), hotkeySet });
         checkAutomatically();
@@ -985,6 +994,10 @@ function setupIPCHandlers() {
         return true;
     });
     ipcMain.handle('updates:check', () => checkAppUpdate());
+    ipcMain.handle('updates:startup-check', event => {
+        if (event.sender === mainWindow?.webContents && getPreferences().autoUpdate) return checkAppUpdate();
+        return updateStatus;
+    });
     ipcMain.handle('updates:status', () => updateStatus);
     ipcMain.handle('updates:history', () => require('./releases.json').updates);
     ipcMain.handle('ads:list', () => {
@@ -1098,7 +1111,25 @@ function setupIPCHandlers() {
         platform: process.platform
     }));
     
-    ipcMain.on('server:selected', (event, serverId) => {
+    ipcMain.handle('project:get', () => activeProject);
+    ipcMain.on('project:select', (event, project) => {
+        if (event.sender !== mainWindow?.webContents || !['majestic', 'russia-online'].includes(project)) return;
+        setActiveProject(project);
+        updateConfig(config => ({ ...config, selectedProject: project }));
+    });
+    ipcMain.handle('server:list', (_, project) =>
+        project === 'russia-online' ? RUSSIA_SERVERS : fetchServersList());
+    ipcMain.on('server:selected', (event, serverId, project) => {
+        if (project === 'russia-online') {
+            if (!RUSSIA_SERVERS.some(server => server.id === serverId)) return;
+            updateConfig(config => ({ ...config, russiaServer: serverId }));
+            for (const win of [mainWindow, searchWindow]) {
+                if (win && !win.isDestroyed() && event.sender !== win.webContents) {
+                    win.webContents.send('server:russia-changed', serverId);
+                }
+            }
+            return;
+        }
         const normalizedId = normalizeServerId(serverId);
         if (!/^[a-z0-9]+(?:-[a-z0-9]+)*-\d+$/.test(normalizedId)) return;
         console.log('[IPC] Server selected:', normalizedId);
@@ -1113,17 +1144,12 @@ function setupIPCHandlers() {
         }
     });
     
-    ipcMain.handle('server:getCurrent', () => {
-        try {
-            const configPath = getConfigPath();
-            if (fs.existsSync(configPath)) {
-                const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-                return config.selectedServer || 'new-york-1';
-            }
-        } catch (error) {
-            console.error('[Server] Failed to get current server:', error);
+    ipcMain.handle('server:getCurrent', (_, project) => {
+        const config = readConfig();
+        if (project === 'russia-online') {
+            return RUSSIA_SERVERS.find(server => server.id === config.russiaServer)?.id || RUSSIA_SERVERS[0].id;
         }
-        return 'new-york-1';
+        return config.selectedServer || 'new-york-1';
     });
     
     ipcMain.on('analytics:search', (event, query, count) => Analytics.trackSearch(query, count));
@@ -1192,6 +1218,7 @@ app.whenReady().then(async () => {
     
     currentHotkey = readHotkey();
     autoHideEnabled = readAutoHide();
+    if (readConfig().selectedProject === 'russia-online') activeProject = 'russia-online';
     Analytics.startSession();
     
     setupIPCHandlers();

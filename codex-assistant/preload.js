@@ -48,24 +48,26 @@ const api = {
             ipcRenderer.invoke('laws:checkUpdates', serverId, updatedAt),
     },
     
+    project: {
+        get: () => ipcRenderer.invoke('project:get'),
+        select: project => ipcRenderer.send('project:select', project),
+    },
+
     server: {
-        getCurrent: () => ipcRenderer.invoke('server:getCurrent'),
-        select: (serverId) => ipcRenderer.send('server:selected', serverId),
-        onChange: (callback) => {
-            const handler = (_, id) => callback(id);
-            ipcRenderer.on('server:changed', handler);
-            return () => {
-                ipcRenderer.removeListener('server:changed', handler);
-            };
-        }
+        list: project => ipcRenderer.invoke('server:list', project),
+        getCurrent: project => ipcRenderer.invoke('server:getCurrent', project),
+        select: (serverId, project) => ipcRenderer.send('server:selected', serverId, project),
+        onChange: (callback, project) => subscribe(
+            project === 'russia-online' ? 'server:russia-changed' : 'server:changed', callback),
     },
     
     updates: {
         check: () => ipcRenderer.invoke('updates:check'),
+        checkOnStartup: () => ipcRenderer.invoke('updates:startup-check'),
         getStatus: () => ipcRenderer.invoke('updates:status'),
         history: () => ipcRenderer.invoke('updates:history'),
         install: () => ipcRenderer.send('updates:install'),
-        onStatus: (cb) => ipcRenderer.on('updates:status', (_, status) => cb(status)),
+        onStatus: cb => subscribe('updates:status', cb),
     },
     
     app: {
