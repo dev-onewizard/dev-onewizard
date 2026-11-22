@@ -44,7 +44,6 @@ const SearchState = {
 };
 
 let activitySetupDone = false;
-let opacityListenersSetup = false;
 
 async function initSearchWindow() {
     console.log('[Search] Initializing...');
@@ -58,17 +57,7 @@ async function initSearchWindow() {
     showLoading();
     
     try {
-        await loadServersList();
-        
-        await loadRules();
-        SearchState.rulesLoaded = true;
-        
-        const serverId = await getCurrentServer();
-        console.log('[Search] Current server:', serverId);
-        SearchState.currentServer = serverId;
-        
-        await loadLaws(serverId);
-        
+        Utils.clearAllCache();
         setupTabs();
         setupSearch();
         setupFilters();
@@ -76,8 +65,14 @@ async function initSearchWindow() {
         setupOpacitySlider();
         setupInfiniteScroll();
         setupCopyHandlers();
+        document.getElementById('rules-source').onclick = event => {
+            event.preventDefault();
+            window.CodexAPI.utils.openExternal(event.currentTarget.href);
+        };
         setupServerSelector();
-        setupSettingsSync();
+        await setupSettingsSync();
+        await loadServersList();
+        await Promise.all([loadRules(), loadLaws(SearchState.currentServer)]);
         
         setupActivityTracking();
         
@@ -88,15 +83,12 @@ async function initSearchWindow() {
             updateSearchServerButton(newServerId);
             updateServersListSelection(newServerId);
             
-            if (SearchState.activeTab === 'laws') {
-                await loadLaws(newServerId);
-                renderResults();
-            }
+            await loadLaws(newServerId);
         });
         
         const savedTab = localStorage.getItem('activeTab');
         if (savedTab === 'laws' || savedTab === 'rules') {
-            SearchState.activeTab = savedTab;
+            if (savedTab === 'rules') activateRulesTab();
         }
         
         if (SearchState.activeTab === 'laws') {
@@ -124,41 +116,34 @@ async function initSearchWindow() {
     }
 }
 
-function setupSettingsSync() {
-    const storageHandler = (e) => {
-        if (e.key === 'windowOpacity' && e.newValue !== null) {
-            const value = parseInt(e.newValue);
-            const slider = document.getElementById('opacity-slider');
-            const valueDisplay = document.getElementById('opacity-value');
-            if (slider && valueDisplay) {
-                slider.value = value;
-                valueDisplay.textContent = value + '%';
-                applyOpacity(value);
-            }
-        }
-        
-        if (e.key === 'autoHideEnabled' && e.newValue !== null) {
-            const checkbox = document.getElementById('auto-hide-checkbox');
-            if (checkbox) {
-                checkbox.checked = e.newValue === 'true';
-            }
-        }
-        
-        if (e.key === 'sound_settings' && e.newValue !== null) {
-            try {
-                const settings = JSON.parse(e.newValue);
-                if (window.SoundManager) {
-                    window.SoundManager.setEnabled(settings.enabled);
-                    window.SoundManager.setVolume(settings.volume);
-                }
-            } catch (error) {
-                console.warn('[Search] Failed to parse sound settings:', error);
-            }
-        }
+async function setupSettingsSync() {
+    const api = window.CodexAPI;
+    const apply = prefs => {
+        const checkbox = document.getElementById('auto-hide-checkbox');
+        if (checkbox) checkbox.checked = prefs.autoHide;
+        window.ThemeManager?.applyTheme(prefs.theme);
+        window.SoundManager?.setEnabled(prefs.soundEnabled);
+        window.SoundManager?.setVolume(prefs.soundVolume);
+        applyOpacity(prefs.opacity);
     };
-    
-    window.removeEventListener('storage', storageHandler);
-    window.addEventListener('storage', storageHandler);
+    api.preferences.onChange(apply);
+    api.preferences.onReset(prefs => {
+        for (const key of ['activeTab', 'searchQuery', 'selectedServer', 'windowOpacity', 'autoHideEnabled', 'theme', 'sound_settings']) localStorage.removeItem(key);
+        SearchState.currentServer = 'new-york-1';
+        SearchState.searchQuery = '';
+        SearchState.lawCategory = 'all';
+        SearchState.ruleCategory = 'all';
+        SearchState.subcategory = null;
+        document.getElementById('search-input').value = '';
+        document.getElementById('clear-search').classList.add('hidden');
+        updateSearchServerButton(SearchState.currentServer);
+        updateServersListSelection(SearchState.currentServer);
+        activateLawsTab();
+        apply(prefs);
+        loadLaws(SearchState.currentServer);
+    });
+    api.cache.onClear(() => Utils.clearAllCache());
+    apply(await api.preferences.get());
 }
 
 function setupActivityTracking() {
@@ -214,49 +199,16 @@ function setupActivityTracking() {
 }
 
 async function getCurrentServer() {
-    try {
-        const localServer = localStorage.getItem('selectedServer');
-        if (localServer) {
-            return localServer;
-        }
-        
-        const serverId = await window.CodexAPI.server.getCurrent();
-        if (serverId) {
-            localStorage.setItem('selectedServer', serverId);
-            return serverId;
-        }
-    } catch (error) {
-        console.error('[Search] Failed to get current server:', error);
-    }
-    
-    return 'new-york-1';
+    return (await window.CodexAPI.server.getCurrent()) || 'new-york-1';
 }
 
 async function loadServersList() {
-    try {
-        const cachedServers = Utils.loadFromOfflineCache('servers');
-        if (cachedServers) {
-            SearchState.servers = cachedServers;
-            renderServersDropdown();
-        }
-        
-        const servers = await window.CodexAPI.laws.listServers();
-        if (servers && servers.length > 0) {
-            SearchState.servers = servers;
-            Utils.saveToOfflineCache('servers', null, servers);
-            renderServersDropdown();
-        }
-        
-        const currentServer = await getCurrentServer();
-        SearchState.currentServer = currentServer;
-        updateSearchServerButton(currentServer);
-        updateServersListSelection(currentServer);
-    } catch (error) {
-        console.error('[Search] Failed to load servers:', error);
-        if (!SearchState.servers.length) {
-            document.getElementById('search-server-text').textContent = 'Ошибка загрузки';
-        }
-    }
+    const [servers, current] = await Promise.all([window.CodexAPI.laws.listServers(), getCurrentServer()]);
+    SearchState.servers = servers;
+    SearchState.currentServer = current;
+    renderServersDropdown();
+    updateSearchServerButton(current);
+    updateServersListSelection(current);
 }
 
 function renderServersDropdown() {
@@ -267,7 +219,7 @@ function renderServersDropdown() {
     
     button.disabled = false;
     
-    const currentServer = SearchState.currentServer || localStorage.getItem('selectedServer') || 'new-york-1';
+    const currentServer = SearchState.currentServer || 'new-york-1';
     
     list.innerHTML = SearchState.servers.map(server => {
         const icon = Utils.getServerIcon(server.id);
@@ -307,33 +259,14 @@ function updateServersListSelection(serverId) {
 }
 
 function selectSearchServer(serverId) {
-    getCurrentServer().then(currentServer => {
-        if (serverId === currentServer) return;
-        
-        localStorage.setItem('selectedServer', serverId);
-        SearchState.currentServer = serverId;
-        
-        updateSearchServerButton(serverId);
-        updateServersListSelection(serverId);
-        
-        const dropdown = document.getElementById('search-server-dropdown');
-        if (dropdown) dropdown.classList.add('hidden');
-        
-        window.CodexAPI.server.select(serverId);
-        
-        if (window.SoundManager) SoundManager.play('select');
-        
-        if (SearchState.activeTab === 'laws') {
-            SearchState.lawsData = [];
-            SearchState.filteredLaws = [];
-            SearchState.lawsLoaded = false;
-            
-            loadLaws(serverId).then(() => {
-                filterLaws();
-                renderResults();
-            });
-        }
-    });
+    document.getElementById('search-server-dropdown')?.classList.add('hidden');
+    if (serverId === SearchState.currentServer) return;
+    SearchState.currentServer = serverId;
+    updateSearchServerButton(serverId);
+    updateServersListSelection(serverId);
+    window.CodexAPI.server.select(serverId);
+    window.SoundManager?.play('select');
+    loadLaws(serverId);
 }
 
 function updateSearchServerButton(serverId) {
@@ -369,154 +302,44 @@ function setupServerSelector() {
     });
 }
 
+let lawRequest = 0;
 async function loadLaws(serverId) {
-    console.log(`[Search] Loading laws for ${serverId}`);
+    const request = ++lawRequest;
     SearchState.isLoading = true;
+    SearchState.lawsLoaded = false;
     SearchState.loadError = null;
-    
-    if (SearchState.activeTab === 'laws' && !SearchState.initializing) {
-        showLoading();
-    }
-    
+    SearchState.lawCategory = 'all';
     SearchState.lawsData = [];
     SearchState.filteredLaws = [];
-    
-    if (SearchState.lawsCache.has(serverId)) {
-        console.log(`[Search] Using memory cache for ${serverId}`);
-        const cachedData = SearchState.lawsCache.get(serverId);
-        if (cachedData && cachedData.length > 0) {
-            SearchState.lawsData = [...cachedData];
-            SearchState.filteredLaws = [...cachedData];
-            SearchState.lawsLimit = 20;
-            
-            updateLawFilters();
+    if (!SearchState.initializing) renderResults();
+    try {
+        const data = await window.CodexAPI.laws.getServerData(serverId);
+        if (request !== lawRequest) return;
+        if (!Array.isArray(data?.items)) throw Error("Laws unavailable");
+        SearchState.lawsData = data.items;
+    } catch (error) {
+        if (request === lawRequest) SearchState.loadError = error.message;
+    } finally {
+        if (request === lawRequest) {
             SearchState.isLoading = false;
             SearchState.lawsLoaded = true;
-            
-            if (SearchState.activeTab === 'laws' && !SearchState.initializing) {
-                filterLaws();
-                renderResults();
-            }
-            return;
-        }
-    }
-    
-    const cachedLaws = Utils.loadFromOfflineCache('laws', serverId);
-    if (cachedLaws && cachedLaws.items && cachedLaws.items.length > 0) {
-        console.log(`[Search] Using offline cache for ${serverId} (${cachedLaws.items.length} laws)`);
-        SearchState.lawsCache.set(serverId, cachedLaws.items);
-        SearchState.lawsData = [...cachedLaws.items];
-        SearchState.filteredLaws = [...cachedLaws.items];
-        SearchState.lawsLimit = 20;
-        
-        updateLawFilters();
-        SearchState.lawsLoaded = true;
-    }
-    
-    try {
-        console.log(`[Search] Fetching laws from server for ${serverId}`);
-        const data = await window.CodexAPI.laws.getServerData(serverId);
-        
-        if (data && data.items && Array.isArray(data.items)) {
-            if (data.items.length > 0) {
-                console.log(`[Search] Loaded ${data.items.length} laws from server for ${serverId}`);
-                SearchState.lawsCache.set(serverId, data.items);
-                SearchState.lawsData = [...data.items];
-                SearchState.filteredLaws = [...data.items];
-                SearchState.lawsLimit = 20;
-                
-                Utils.saveToOfflineCache('laws', serverId, data);
-                
-                updateLawFilters();
-                SearchState.lawsLoaded = true;
-            } else {
-                console.warn(`[Search] No laws items in data for ${serverId}`);
-                if (!SearchState.lawsData.length) {
-                    SearchState.lawsData = [];
-                    SearchState.filteredLaws = [];
-                }
-                SearchState.lawsLoaded = true;
-            }
-        } else {
-            console.warn(`[Search] Invalid data format for ${serverId}:`, data);
-            if (SearchState.lawsData.length === 0) {
-                SearchState.lawsData = [];
-                SearchState.filteredLaws = [];
-            }
-            SearchState.lawsLoaded = true;
-        }
-    } catch (error) {
-        console.error(`[Search] Failed to load laws for ${serverId}:`, error);
-        SearchState.loadError = error.message;
-        if (SearchState.lawsData.length === 0) {
-            SearchState.lawsData = [];
-            SearchState.filteredLaws = [];
-        }
-        SearchState.lawsLoaded = true;
-        if (window.SoundManager) SoundManager.play('error');
-    } finally {
-        SearchState.isLoading = false;
-        if (SearchState.activeTab === 'laws' && !SearchState.initializing) {
+            updateLawFilters();
             filterLaws();
-            renderResults();
+            if (!SearchState.initializing) renderResults();
         }
     }
 }
 
 async function loadRules() {
-    console.log('[Search] Loading rules...');
-    
-    try {
-        const cachedGeneral = Utils.loadFromOfflineCache('rules', 'general');
-        const cachedEvents = Utils.loadFromOfflineCache('rules', 'events');
-        const cachedOrgs = Utils.loadFromOfflineCache('rules', 'organizations');
-        
-        if (cachedGeneral && typeof cachedGeneral === 'object') SearchState.rulesData.general = cachedGeneral;
-        if (cachedEvents && typeof cachedEvents === 'object') SearchState.rulesData.events = cachedEvents;
-        if (cachedOrgs && typeof cachedOrgs === 'object') SearchState.rulesData.organizations = cachedOrgs;
-        
-        console.log('[Search] Fetching rules from server...');
-        const [general, events, organizations] = await Promise.allSettled([
-            window.CodexAPI.laws.fetchRules('general'),
-            window.CodexAPI.laws.fetchRules('events'),
-            window.CodexAPI.laws.fetchRules('organizations')
-        ]);
-        
-        if (general.status === 'fulfilled' && general.value && typeof general.value === 'object' && Object.keys(general.value).length > 0) {
-            console.log('[Search] Loaded general rules');
-            SearchState.rulesData.general = general.value;
-            Utils.saveToOfflineCache('rules', 'general', general.value);
-        }
-        
-        if (events.status === 'fulfilled' && events.value && typeof events.value === 'object' && Object.keys(events.value).length > 0) {
-            console.log('[Search] Loaded events rules');
-            SearchState.rulesData.events = events.value;
-            Utils.saveToOfflineCache('rules', 'events', events.value);
-        }
-        
-        if (organizations.status === 'fulfilled' && organizations.value && typeof organizations.value === 'object' && Object.keys(organizations.value).length > 0) {
-            console.log('[Search] Loaded organizations rules');
-            SearchState.rulesData.organizations = organizations.value;
-            Utils.saveToOfflineCache('rules', 'organizations', organizations.value);
-        }
-        
-        updateSubcategoriesData();
-        SearchState.rulesLoaded = true;
-        console.log('[Search] Rules loaded successfully');
-        
-        if (SearchState.activeTab === 'rules' && !SearchState.initializing) {
-            filterRules();
-            renderResults();
-        }
-    } catch (error) {
-        console.error('[Search] Failed to load rules:', error);
-        if (Object.keys(SearchState.rulesData.general).length > 0 || 
-            Object.keys(SearchState.rulesData.events).length > 0 || 
-            Object.keys(SearchState.rulesData.organizations).length > 0) {
-            SearchState.rulesLoaded = true;
-        }
-        if (window.SoundManager) SoundManager.play('error');
-    }
+    const categories = ['general', 'events', 'organizations'];
+    const rounds = await Promise.allSettled(categories.map(category => window.CodexAPI.laws.fetchRules(category)));
+    rounds.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value) SearchState.rulesData[categories[index]] = result.value;
+    });
+    SearchState.rulesLoaded = true;
+    updateSubcategoriesData();
+    filterRules();
+    if (!SearchState.initializing) renderResults();
 }
 
 function updateLawFilters() {
@@ -856,6 +679,7 @@ function activateLawsTab() {
     document.getElementById('laws-filters').classList.remove('hidden');
     document.getElementById('rules-filters').classList.add('hidden');
     document.getElementById('search-input').placeholder = 'Поиск по законам';
+    document.getElementById('rules-source').classList.add('hidden');
     
     const serverSelector = document.getElementById('search-server-selector');
     if (serverSelector) serverSelector.style.display = 'block';
@@ -878,6 +702,7 @@ function activateRulesTab() {
     document.getElementById('rules-filters').classList.remove('hidden');
     document.getElementById('laws-filters').classList.add('hidden');
     document.getElementById('search-input').placeholder = 'Поиск по правилам';
+    document.getElementById('rules-source').classList.remove('hidden');
     
     const serverSelector = document.getElementById('search-server-selector');
     if (serverSelector) serverSelector.style.display = 'none';
@@ -1109,7 +934,7 @@ function renderRules(container) {
 
 
 function setupCopyHandlers() {
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', async (e) => {
         const badge = e.target.closest('.code-badge');
         if (!badge) return;
         
@@ -1128,12 +953,17 @@ function setupCopyHandlers() {
             copyText = `${code} ${CONSTANTS.RULE_ABBR[subcategory] || subcategory}`;
         }
         
-        Utils.copyToClipboard(copyText);
+        try {
+            if (!await window.CodexAPI.clipboard.copy(copyText)) throw Error("Copy failed");
+        } catch {
+            AppToast.show('Не удалось скопировать', 'error');
+            return;
+        }
         
         badge.classList.add('copied');
         setTimeout(() => badge.classList.remove('copied'), 200);
         
-        Notification.show('Код скопирован');
+        AppToast.show('Скопировано: ' + copyText);
         
         if (window.SoundManager) {
             SoundManager.play('copy');
@@ -1145,76 +975,35 @@ function setupCopyHandlers() {
 
 function setupAutoHide() {
     const checkbox = document.getElementById('auto-hide-checkbox');
-    if (!checkbox) return;
-    
-    const saved = localStorage.getItem('autoHideEnabled');
-    if (saved !== null) {
-        checkbox.checked = saved === 'true';
-    }
-    
-    checkbox.addEventListener('change', (e) => {
-        localStorage.setItem('autoHideEnabled', e.target.checked);
-        window.CodexAPI.config.setAutoHide(e.target.checked);
-        if (window.SoundManager) SoundManager.play('toggle');
-    });
+    checkbox.onchange = async () => {
+        try {
+            if (!await window.CodexAPI.config.setAutoHide(checkbox.checked)) throw Error("Save failed");
+        } catch {
+            AppToast.show('Не удалось изменить автоскрытие', 'error');
+        }
+    };
 }
 
+let currentTransparency = 0;
 function setupOpacitySlider() {
-    if (opacityListenersSetup) return;
-    opacityListenersSetup = true;
     const slider = document.getElementById('opacity-slider');
-    const valueDisplay = document.getElementById('opacity-value');
-    
-    if (!slider || !valueDisplay) return;
-    
-    const saved = localStorage.getItem('windowOpacity');
-    if (saved !== null) {
-        slider.value = saved;
-        valueDisplay.textContent = `${saved}%`;
-        applyOpacity(parseInt(saved));
-    }
-    
-    let timeout;
-    
-    slider.addEventListener('input', (e) => {
-        const value = parseInt(e.target.value);
-        valueDisplay.textContent = `${value}%`;
-        applyOpacity(value);
-        
-        if (window.SoundManager) {
-            SoundManager.play('slider');
-        }
-        
-        clearTimeout(timeout);
-        timeout = setTimeout(() => {
-            localStorage.setItem('windowOpacity', value);
-        }, 500);
+    slider.oninput = () => {
+        const opacity = Number(slider.value);
+        applyOpacity(opacity);
+        window.CodexAPI.preferences.save({ opacity }).catch(() => {
+            AppToast.show('Не удалось сохранить прозрачность', 'error');
+        });
+    };
+    window.CodexAPI.utils.on('window:set-css-opacity-zero', () => {
+        document.documentElement.style.opacity = '0';
     });
-    
-    slider.addEventListener('mouseenter', () => {
-        if (window.SoundManager) {
-            SoundManager.play('hover');
-        }
-    });
+    window.CodexAPI.utils.on('window:restore-css-opacity', () => applyOpacity(currentTransparency));
 }
 
 function applyOpacity(value) {
-    document.documentElement.style.opacity = 1 - (value / 100);
-    
-    if (!opacityListenersSetup) {
-        window._setOpacityHandler = () => {
-            document.documentElement.style.opacity = '0';
-        };
-        
-        window._restoreOpacityHandler = () => {
-            applyOpacity(parseInt(localStorage.getItem('windowOpacity') || '0'));
-        };
-        
-        window.CodexAPI.utils.on('window:set-css-opacity-zero', window._setOpacityHandler);
-        window.CodexAPI.utils.on('window:restore-css-opacity', window._restoreOpacityHandler);
-        
-        opacityListenersSetup = true;
-    }
+    currentTransparency = value;
+    Utils.renderRange(document.getElementById('opacity-slider'), document.getElementById('opacity-value'), value);
+    document.documentElement.style.opacity = 1 - value / 100;
 }
 
 function setupInfiniteScroll() {

@@ -14,11 +14,6 @@ async function initMainWindow() {
     
     setupWindowControls();
     setupMainTabs();
-    await loadServers();
-    await loadSelectedServer();
-    loadHotkey();
-    loadAutoHide();
-    await loadUpdatesHistory();
     
     setupEventListeners();
     setupHotkeyEditor();
@@ -28,10 +23,17 @@ async function initMainWindow() {
         window.SoundManager.init();
     }
     
-    if (window.SettingsManager) {
-        window.SettingsManager.init();
-    }
+    if (window.SettingsManager) await window.SettingsManager.init();
     
+    window.CodexAPI.preferences.onReset(() => {
+        loadHotkey();
+        MainState.selectedServer = 'new-york-1';
+        updateServerButton();
+        renderServersList();
+        loadServerData(MainState.selectedServer);
+    });
+    await Promise.all([loadUpdatesHistory(), loadServers().then(loadSelectedServer)]);
+    loadHotkey();
     console.log('[Main] Ready');
 }
 
@@ -78,6 +80,7 @@ function setupMainTabs() {
 }
 
 function setupWindowControls() {
+    document.getElementById('open-search')?.addEventListener('click', () => window.CodexAPI.window.toggleSearch());
     document.getElementById('minimize-button')?.addEventListener('click', () => {
         window.CodexAPI.window.minimize();
         if (window.SoundManager) SoundManager.play('toggle');
@@ -89,62 +92,10 @@ function setupWindowControls() {
 }
 
 function setupThemeToggle() {
-    const themeToggle = document.getElementById('theme-toggle');
-    if (!themeToggle) {
-        console.log('[Main] Theme toggle button not found');
-        return;
-    }
-    
-    console.log('[Main] Setting up theme toggle');
-    
-    updateThemeIcons();
-    
-    const newToggle = themeToggle.cloneNode(true);
-    themeToggle.parentNode.replaceChild(newToggle, themeToggle);
-    
-    newToggle.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('[Main] Theme toggle clicked');
-        
-        if (window.ThemeManager) {
-            window.ThemeManager.toggleTheme();
-            if (window.SoundManager) SoundManager.play('toggle');
-        } else {
-            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            updateThemeIcons();
-            
-            if (window.ThemeManager) {
-                window.ThemeManager.init();
-            }
-        }
+    document.getElementById('theme-toggle')?.addEventListener('click', () => {
+        const theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+        window.SettingsManager.save({ theme });
     });
-    
-    window.addEventListener('storage', (e) => {
-        if (e.key === 'theme') {
-            console.log('[Main] Theme changed in storage:', e.newValue);
-            updateThemeIcons();
-        }
-    });
-}
-
-function updateThemeIcons() {
-    const lightIcon = document.querySelector('.theme-icon-light');
-    const darkIcon = document.querySelector('.theme-icon-dark');
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-    
-    if (!lightIcon || !darkIcon) return;
-    
-    if (currentTheme === 'dark') {
-        lightIcon.style.display = 'none';
-        darkIcon.style.display = 'block';
-    } else {
-        lightIcon.style.display = 'block';
-        darkIcon.style.display = 'none';
-    }
 }
 
 async function loadServers() {
@@ -152,18 +103,9 @@ async function loadServers() {
     const serverText = document.getElementById('server-text');
     
     try {
-        const cachedServers = Utils.loadFromOfflineCache('servers');
-        if (cachedServers) {
-            MainState.servers = cachedServers;
-            button.disabled = false;
-            renderServersList();
-            serverText.textContent = 'Серверы загружены';
-        }
-        
         const servers = await window.CodexAPI.laws.listServers();
         if (servers && servers.length > 0) {
             MainState.servers = servers;
-            Utils.saveToOfflineCache('servers', null, servers);
             renderServersList();
             button.disabled = false;
         }
@@ -275,19 +217,11 @@ function selectServer(serverId) {
 async function loadServerData(serverId) {
     try {
         const data = await window.CodexAPI.laws.getServerData(serverId);
-        if (data?.updatedAt) {
-            MainState.lastUpdateDate = data.updatedAt;
-            updateLastUpdateDate(data.updatedAt);
-            Utils.saveToOfflineCache('laws', serverId, data);
-        }
+        if (serverId !== MainState.selectedServer) return;
+        MainState.lastUpdateDate = data?.updatedAt || null;
+        updateLastUpdateDate(MainState.lastUpdateDate);
     } catch (error) {
-        console.error('[Main] Failed to load server data:', error);
-        
-        const cached = Utils.loadFromOfflineCache('laws', serverId);
-        if (cached?.updatedAt) {
-            MainState.lastUpdateDate = cached.updatedAt;
-            updateLastUpdateDate(cached.updatedAt);
-        }
+        console.warn('[Main] Data unavailable:', error);
     }
 }
 
@@ -297,6 +231,7 @@ function updateLastUpdateDate(timestamp) {
     
     if (!indicator || !lastUpdate) return;
     
+    indicator.classList.toggle('hidden', !timestamp);
     if (timestamp) {
         const date = new Date(timestamp);
         lastUpdate.textContent = `Последнее изменение: ${date.toLocaleDateString('ru-RU')}`;
@@ -392,7 +327,7 @@ function stopHotkeyEditing(save = false) {
     window.CodexAPI.hotkey.stopEditing();
 }
 
-function handleHotkeyInput(e) {
+async function handleHotkeyInput(e) {
     if (!MainState.isEditing) return;
     
     e.preventDefault();
@@ -457,14 +392,21 @@ function handleHotkeyInput(e) {
         return;
     }
     
+    try {
+        if (!(await window.CodexAPI.config.setHotkey(hotkey)).ok) {
+            showHotkeyError('Горячая клавиша уже занята');
+            return;
+        }
+    } catch {
+        showHotkeyError('Не удалось сохранить комбинацию');
+        return;
+    }
     MainState.currentHotkey = hotkey;
     document.getElementById('hotkey-display').textContent = hotkey;
     localStorage.setItem('hotkey', hotkey);
     
-    window.CodexAPI.hotkey.change(hotkey);
-    
     stopHotkeyEditing(true);
-    Notification.show('Горячая клавиша сохранена');
+    AppToast.show('Горячая клавиша сохранена');
     if (window.SoundManager) SoundManager.play('select');
 }
 
@@ -498,12 +440,7 @@ async function loadUpdatesHistory() {
     if (!container) return;
     
     try {
-        const response = await fetch('../releases.json');
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        const data = await response.json();
-        renderUpdates(data.updates || []);
+        renderUpdates(await window.CodexAPI.updates.history());
     } catch (error) {
         console.error('[Main] Failed to load updates:', error);
         container.innerHTML = '<div class="empty-state"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6B7280"><circle cx="12" cy="12" r="10" stroke-width="1.5"/><line x1="12" y1="8" x2="12" y2="12" stroke-width="1.5"/><circle cx="12" cy="16" r="0.5" fill="#6B7280"/></svg><div class="empty-state-title">История обновлений временно недоступна</div></div>';
@@ -615,7 +552,7 @@ function setupEventListeners() {
         if (window.SoundManager) SoundManager.play('toggle');
     });
     
-    document.querySelectorAll('.link-icon').forEach(link => {
+    document.querySelectorAll('.link-icon, .external-link').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             window.CodexAPI.utils.openExternal(link.href);

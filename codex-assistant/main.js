@@ -1,17 +1,19 @@
 // main.js
-const { app, BrowserWindow, globalShortcut, ipcMain, Menu, shell } = require('electron');
+const { app, BrowserWindow, clipboard, globalShortcut, ipcMain, Menu, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 const fetch = require('node-fetch');
 const Analytics = require('./src/js/analytics.js');
 
-// ========== НАСТРОЙКИ ДЛЯ MOS.HUB ==========
+// ========== ИСТОЧНИК ДАННЫХ ==========
 const DATA_OWNER = 'alamantik';
 const DATA_REPO = 'majestic-laws-db';
 const DATA_BRANCH = 'main';
 const BASE_URL = `https://raw.githubusercontent.com/${DATA_OWNER}/${DATA_REPO}/${DATA_BRANCH}`;
 const REPO_STRUCTURE_URL = `${BASE_URL}/repo_structure.json`;
+const RELEASES_PAGE = 'https://github.com/dev-onewizard/dev-onewizard/releases/latest';
+const DEFAULT_PREFS = { opacity: 0, theme: 'dark', soundEnabled: true, soundVolume: 70, autoUpdate: true };
 const SERVER_FILE_NAMES = {
     'las-vegas-9': 'las vegas-9',
     'los-angeles-7': 'los angeles-7',
@@ -21,7 +23,7 @@ const SERVER_FILE_NAMES = {
 };
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-let updateReady = false;
+let updateReady = null;
 let updaterStarted = false;
 
 let mainWindow = null;
@@ -40,6 +42,37 @@ const dataCache = {
     structure: null
 };
 const CACHE_TTL = 10 * 60 * 1000;
+let cacheGeneration = 0;
+
+function cacheDir() {
+    return path.join(app.getPath('userData'), 'reference-cache');
+}
+
+function readCachedData(key) {
+    try { return JSON.parse(fs.readFileSync(path.join(cacheDir(), key + '.json'), 'utf8')); }
+    catch { return null; }
+}
+
+function saveCachedData(key, data, generation) {
+    if (generation !== cacheGeneration) return;
+    try {
+        fs.mkdirSync(cacheDir(), { recursive: true });
+        fs.writeFileSync(path.join(cacheDir(), key + '.json'), JSON.stringify(data));
+    } catch (error) {
+        console.warn('[Cache]', error.message);
+    }
+}
+
+function getCacheSize() {
+    try {
+        return fs.readdirSync(cacheDir(), { withFileTypes: true })
+            .filter(entry => entry.isFile())
+            .reduce((bytes, entry) => bytes + fs.statSync(path.join(cacheDir(), entry.name)).size, 0);
+    } catch (error) {
+        if (error.code === 'ENOENT') return 0;
+        throw error;
+    }
+}
 
 // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
 
@@ -52,7 +85,12 @@ function getConfigPath() {
     return path.join(app.getPath('userData'), 'config.json');
 }
 
-async function updateConfig(updater) {
+function readConfig() {
+    try { return JSON.parse(fs.readFileSync(getConfigPath(), 'utf8')) || {}; }
+    catch { return {}; }
+}
+
+function updateConfig(updater) {
     const configPath = getConfigPath();
     try {
         const dir = path.dirname(configPath);
@@ -60,19 +98,40 @@ async function updateConfig(updater) {
             fs.mkdirSync(dir, { recursive: true });
         }
 
-        let config = {};
-        if (fs.existsSync(configPath)) {
-            const data = await fs.promises.readFile(configPath, 'utf-8');
-            config = JSON.parse(data);
-        }
-
-        const newConfig = updater(config);
-        await fs.promises.writeFile(configPath, JSON.stringify(newConfig, null, 2), 'utf-8');
+        const newConfig = updater(readConfig());
+        fs.writeFileSync(configPath + '.tmp', JSON.stringify(newConfig, null, 2), 'utf8');
+        fs.renameSync(configPath + '.tmp', configPath);
         return newConfig;
     } catch (error) {
         console.error('[Config] Failed to update:', error);
         return null;
     }
+}
+
+function getPreferences() {
+    return { ...DEFAULT_PREFS, ...readConfig().preferences, autoHide: autoHideEnabled };
+}
+
+function broadcast(channel, value) {
+    for (const win of [mainWindow, searchWindow]) {
+        if (win && !win.isDestroyed()) win.webContents.send(channel, value);
+    }
+}
+
+function savePreferences(changes, initialize = false) {
+    const config = readConfig();
+    if (initialize && config.preferences) return getPreferences();
+    const prefs = { ...DEFAULT_PREFS, ...config.preferences };
+    if (Number.isFinite(changes?.opacity)) prefs.opacity = Math.max(0, Math.min(25, Math.round(changes.opacity)));
+    if (Number.isFinite(changes?.soundVolume)) prefs.soundVolume = Math.max(0, Math.min(100, Math.round(changes.soundVolume)));
+    if (['dark', 'light'].includes(changes?.theme)) prefs.theme = changes.theme;
+    for (const key of ['soundEnabled', 'autoUpdate']) {
+        if (typeof changes?.[key] === 'boolean') prefs[key] = changes[key];
+    }
+    if (!updateConfig(current => ({ ...current, preferences: prefs }))) throw Error('Preferences write failed');
+    const state = getPreferences();
+    broadcast('preferences:changed', state);
+    return state;
 }
 
 function readHotkey() {
@@ -149,6 +208,7 @@ async function fetchRepoStructure(ignoreCache = false) {
         return dataCache.structure;
     }
     
+    const generation = cacheGeneration;
     try {
         console.log('[API] Fetching repo structure from:', REPO_STRUCTURE_URL);
         const response = await fetch(REPO_STRUCTURE_URL, { 
@@ -161,14 +221,18 @@ async function fetchRepoStructure(ignoreCache = false) {
         
         const text = await response.text();
         const cleanText = text.replace(/^\uFEFF/, '');
-        dataCache.structure = JSON.parse(cleanText);
-        dataCache.structureTimestamp = Date.now();
+        const structure = JSON.parse(cleanText);
+        if (generation === cacheGeneration) {
+            dataCache.structure = structure;
+            dataCache.structureTimestamp = Date.now();
+            saveCachedData('catalog', structure, generation);
+        }
         console.log('[API] Repo structure loaded successfully');
-        return dataCache.structure;
+        return structure;
         
     } catch (error) {
         console.error('[API] Error fetching structure:', error.message);
-        return null;
+        return readCachedData('catalog');
     }
 }
 
@@ -343,6 +407,9 @@ async function fetchServerJson(serverId, forceRefresh = false) {
         return cached.data;
     }
     
+    const cacheKey = 'laws-' + normalizedId;
+    const generation = cacheGeneration;
+    const offline = () => forceRefresh ? null : readCachedData(cacheKey);
     try {
         const structure = dataCache.structure || await fetchRepoStructure();
         const fileName = parseServerFiles(structure).find(({ id }) => id === normalizedId)?.file
@@ -356,12 +423,12 @@ async function fetchServerJson(serverId, forceRefresh = false) {
         
         if (response.status === 404) {
             console.warn(`[API] Laws file for ${normalizedId} not found (404)`);
-            return null;
+            return offline();
         }
         
         if (!response.ok) {
             console.warn(`[API] Server ${normalizedId} returned ${response.status}`);
-            return null;
+            return offline();
         }
         
         const text = await response.text();
@@ -374,28 +441,31 @@ async function fetchServerJson(serverId, forceRefresh = false) {
             rawData = JSON.parse(cleanText);
         } catch (parseError) {
             console.error(`[API] JSON parse error for ${normalizedId}:`, parseError.message);
-            return null;
+            return offline();
         }
         
         if (!rawData || typeof rawData !== 'object') {
             console.warn(`[API] Invalid data format for ${normalizedId}`);
-            return null;
+            return offline();
         }
         
         const processedData = transformLawsData(normalizedId, rawData);
         
         if (processedData && processedData.items) {
-            dataCache.laws.set(normalizedId, { data: processedData, timestamp: Date.now() });
+            if (generation === cacheGeneration) {
+                dataCache.laws.set(normalizedId, { data: processedData, timestamp: Date.now() });
+                saveCachedData(cacheKey, processedData, generation);
+            }
             console.log(`[API] Loaded ${processedData.items.length} laws for ${normalizedId}`);
             return processedData;
         }
         
         console.warn(`[API] No laws found for ${normalizedId}`);
-        return null;
+        return offline();
         
     } catch (error) {
         console.error(`[API] Error fetching ${normalizedId}:`, error.message);
-        return null;
+        return offline();
     }
 }
 
@@ -405,6 +475,9 @@ async function fetchRulesJson(filename, forceRefresh = false) {
     const cached = dataCache.rules.get(safeFilename);
     if (!forceRefresh && cached && (Date.now() - cached.timestamp) < CACHE_TTL) return cached.data;
     
+    const cacheKey = 'rules-' + safeFilename;
+    const generation = cacheGeneration;
+    const offline = () => forceRefresh ? null : readCachedData(cacheKey);
     try {
         const url = `${BASE_URL}/rules/${safeFilename}.json`;
         console.log(`[API] Fetching rules ${safeFilename} from ${url}`);
@@ -415,12 +488,12 @@ async function fetchRulesJson(filename, forceRefresh = false) {
         
         if (response.status === 404) {
             console.warn(`[API] Rules file ${safeFilename} not found (404)`);
-            return {};
+            return offline();
         }
         
         if (!response.ok) {
             console.warn(`[API] Rules ${safeFilename} returned ${response.status}`);
-            return null;
+            return offline();
         }
         
         const text = await response.text();
@@ -429,23 +502,26 @@ async function fetchRulesJson(filename, forceRefresh = false) {
         
         if (!rawData || typeof rawData !== 'object') {
             console.warn(`[API] Invalid rules data format for ${filename}`);
-            return null;
+            return offline();
         }
         
         const processedData = transformRulesData(safeFilename, rawData);
         
         if (processedData && Object.keys(processedData).length > 0) {
-            dataCache.rules.set(safeFilename, { data: processedData, timestamp: Date.now() });
+            if (generation === cacheGeneration) {
+                dataCache.rules.set(safeFilename, { data: processedData, timestamp: Date.now() });
+                saveCachedData(cacheKey, processedData, generation);
+            }
             console.log(`[API] Loaded rules for ${safeFilename}`);
             return processedData;
         }
         
         console.warn(`[API] No rules found for ${safeFilename}`);
-        return {};
+        return offline();
         
     } catch (error) {
         console.error(`[API] Error fetching rules ${safeFilename}:`, error.message);
-        return null;
+        return offline();
     }
 }
 
@@ -756,16 +832,12 @@ function registerToggleHotkey(accelerator) {
             console.log('[Hotkey] Invalid hotkey combination:', accelerator);
             return false;
         }
-        if (currentHotkey) {
-            try {
-                globalShortcut.unregister(currentHotkey);
-            } catch (e) {
-            }
-        }
+        if (accelerator === currentHotkey && globalShortcut.isRegistered(accelerator)) return true;
         
         const success = globalShortcut.register(accelerator, toggleSearchWindow);
         
         if (success) {
+            if (currentHotkey && currentHotkey !== accelerator) globalShortcut.unregister(currentHotkey);
             console.log('[Hotkey] Registered:', accelerator);
             currentHotkey = accelerator;
             return true;
@@ -805,16 +877,46 @@ function setupAutoUpdater() {
     });
     
     autoUpdater.on('update-downloaded', (info) => {
-        updateReady = true;
+        updateReady = info.version;
         console.log('[AutoUpdater] Update downloaded:', info.version);
         mainWindow?.webContents.send('update-downloaded', info.version);
     });
     
     const checkForUpdates = () => {
-        if (!updateReady) autoUpdater.checkForUpdates().catch(() => {});
+        if (!updateReady && getPreferences().autoUpdate) {
+            autoUpdater.checkForUpdates().then(result => result?.downloadPromise?.catch(() => {})).catch(() => {});
+        }
     };
     setTimeout(checkForUpdates, 3000);
     setInterval(checkForUpdates, 60 * 60 * 1000).unref();
+}
+
+async function checkAppUpdate() {
+    const current = app.getVersion();
+    if (updateReady) {
+        mainWindow?.webContents.send('update-downloaded', updateReady);
+        return { state: 'downloaded', current, latest: updateReady };
+    }
+    if (updaterStarted) {
+        const result = await autoUpdater.checkForUpdates();
+        if (!result) throw Error('Update provider unavailable');
+        result.downloadPromise?.catch(() => {});
+        return {
+            state: result.isUpdateAvailable ? 'downloading' : 'current',
+            current,
+            latest: result.updateInfo.version
+        };
+    }
+    const response = await fetch(RELEASES_PAGE, { timeout: 8000, redirect: 'manual' });
+    const location = response.headers.get('location');
+    if (response.status !== 302 || !location) throw Error('GitHub HTTP ' + response.status);
+    const target = new URL(location, RELEASES_PAGE);
+    const latest = target.origin === 'https://github.com' &&
+        /^\/dev-onewizard\/dev-onewizard\/releases\/tag\/v?(\d+\.\d+\.\d+)$/.exec(target.pathname)?.[1];
+    if (!latest) throw Error('Invalid stable release version');
+    const installed = current.split('.').map(Number);
+    const difference = latest.split('.').map((part, index) => Number(part) - installed[index]).find(value => value !== 0);
+    return { state: difference > 0 ? 'available' : 'current', current, latest };
 }
 
 function openHttpsLink(url) {
@@ -828,9 +930,42 @@ function openHttpsLink(url) {
 }
 
 function setupIPCHandlers() {
+    ipcMain.handle('preferences:get', () => getPreferences());
+    ipcMain.handle('preferences:save', (_, changes, initialize) => savePreferences(changes, initialize === true));
+    ipcMain.handle('preferences:reset', () => {
+        const hotkeySet = registerToggleHotkey('Ctrl+Shift+K');
+        const saved = updateConfig(config => ({
+            ...config, preferences: { ...DEFAULT_PREFS }, toggleSearch: currentHotkey,
+            autoHideEnabled: true, selectedServer: 'new-york-1'
+        }));
+        if (!saved) throw Error('Settings reset failed');
+        autoHideEnabled = true;
+        lastSearchBounds = null;
+        broadcast('preferences:reset', { ...getPreferences(), hotkeySet });
+        if (searchWindow?.isVisible()) resetInactivityTimer();
+        return { hotkeySet };
+    });
+    ipcMain.handle('cache:size', () => getCacheSize());
+    ipcMain.handle('cache:clear', () => {
+        fs.rmSync(cacheDir(), { recursive: true, force: true });
+        cacheGeneration++;
+        dataCache.structure = null;
+        dataCache.structureTimestamp = 0;
+        dataCache.laws.clear();
+        dataCache.rules.clear();
+        broadcast('cache:cleared');
+        return 0;
+    });
+    ipcMain.handle('clipboard:copy', (_, text) => {
+        if (typeof text !== 'string' || !text || text.length > 500) return false;
+        clipboard.writeText(text);
+        return true;
+    });
+    ipcMain.handle('updates:check', () => checkAppUpdate());
+    ipcMain.handle('updates:history', () => require('./releases.json').updates);
     ipcMain.on('updates:install', (event) => {
         if (!updateReady || event.sender !== mainWindow?.webContents) return;
-        updateReady = false;
+        updateReady = null;
         autoUpdater.quitAndInstall(false, true);
     });
     ipcMain.on('window:minimize', () => mainWindow?.minimize());
@@ -853,16 +988,22 @@ function setupIPCHandlers() {
     
     ipcMain.handle('cfg:getHotkey', async () => ({ toggleSearch: currentHotkey }));
     ipcMain.handle('cfg:setHotkey', async (event, accelerator) => {
-        await writeHotkey(accelerator);
-        registerToggleHotkey(accelerator);
+        const previous = currentHotkey;
+        if (!registerToggleHotkey(accelerator)) return { ok: false };
+        if (!writeHotkey(accelerator)) {
+            registerToggleHotkey(previous);
+            return { ok: false };
+        }
         Analytics.trackSettingsChange('hotkey', accelerator);
         return { ok: true };
     });
     ipcMain.handle('cfg:getAutoHide', () => autoHideEnabled);
     ipcMain.handle('cfg:setAutoHide', (event, enabled) => {
+        if (typeof enabled !== 'boolean' || !writeAutoHide(enabled)) return false;
         autoHideEnabled = enabled;
-        writeAutoHide(enabled);
-        Analytics.trackSettingsChange('autoHide', enabled);
+        if (enabled) resetInactivityTimer();
+        else clearInactivityTimer();
+        broadcast('preferences:changed', getPreferences());
         return true;
     });
     
@@ -922,6 +1063,7 @@ function setupIPCHandlers() {
     
     ipcMain.on('server:selected', (event, serverId) => {
         const normalizedId = normalizeServerId(serverId);
+        if (!/^[a-z0-9]+(?:-[a-z0-9]+)*-\d+$/.test(normalizedId)) return;
         console.log('[IPC] Server selected:', normalizedId);
         Analytics.trackServerChange(normalizedId);
         updateConfig((config) => ({ ...config, selectedServer: normalizedId }));

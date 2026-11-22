@@ -13,7 +13,7 @@
 
 ## База Majestic
 
-Приложение загружает серверы, законы и правила из [`alamantik/majestic-laws-db`](https://github.com/alamantik/majestic-laws-db) при запуске. В актуальной структуре базы — 19 серверов Majestic и три набора правил. Данные кэшируются локально для работы без сети.
+Приложение читает список серверов из `repo_structure.json`, кодексы из `laws/` и общие правила из `rules/general.json`, `rules/events.json` и `rules/organizations.json` в [`alamantik/majestic-laws-db`](https://github.com/alamantik/majestic-laws-db). База охватывает 19 серверов Majestic. Приложение сохраняет загруженные данные для доступа без сети. Очистка кэша удаляет эти копии. Сброс настроек возвращает исходные значения в обоих окнах.
 
 ## Запуск и разработка
 

@@ -198,8 +198,8 @@
         showUserError(errorInfo) {
             const message = this.getUserFriendlyMessage(errorInfo);
             
-            if (window.Notification && typeof Notification.show === 'function') {
-                Notification.show(message);
+            if (window.AppToast) {
+                AppToast.show(message, 'error');
             } else {
                 const notification = document.createElement('div');
                 notification.style.cssText = `

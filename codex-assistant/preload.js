@@ -3,6 +3,12 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 console.log('[Preload] Loading Codex Assistant...');
 
+function subscribe(channel, callback) {
+    const handler = (_, value) => callback(value);
+    ipcRenderer.on(channel, handler);
+    return () => ipcRenderer.removeListener(channel, handler);
+}
+
 const api = {
     window: {
         minimize: () => ipcRenderer.send('window:minimize'),
@@ -10,6 +16,19 @@ const api = {
         hideSearch: () => ipcRenderer.send('window:hide-search'),
         toggleSearch: () => ipcRenderer.send('window:toggle-search'),
     },
+    preferences: {
+        get: () => ipcRenderer.invoke('preferences:get'),
+        save: (changes, initialize = false) => ipcRenderer.invoke('preferences:save', changes, initialize),
+        reset: () => ipcRenderer.invoke('preferences:reset'),
+        onChange: cb => subscribe('preferences:changed', cb),
+        onReset: cb => subscribe('preferences:reset', cb),
+    },
+    cache: {
+        size: () => ipcRenderer.invoke('cache:size'),
+        clear: () => ipcRenderer.invoke('cache:clear'),
+        onClear: cb => subscribe('cache:cleared', cb),
+    },
+    clipboard: { copy: text => ipcRenderer.invoke('clipboard:copy', text) },
     
     config: {
         getHotkey: () => ipcRenderer.invoke('cfg:getHotkey'),
@@ -39,6 +58,8 @@ const api = {
     },
     
     updates: {
+        check: () => ipcRenderer.invoke('updates:check'),
+        history: () => ipcRenderer.invoke('updates:history'),
         install: () => ipcRenderer.send('updates:install'),
         onAvailable: (cb) => ipcRenderer.on('update-available', (_, v) => cb(v)),
         onProgress: (cb) => ipcRenderer.on('download-progress', (_, p) => cb(p)),

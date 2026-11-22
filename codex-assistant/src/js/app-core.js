@@ -4,7 +4,6 @@
     const log = window.logger ? logger.child('CORE') : console;
 
     const CONSTANTS = {
-        APP_VERSION: '1.0.5',
         LAW_ABBR: { UK: 'УК', AK: 'АК', DK: 'ДК', PK: 'ПК', UAK: 'УАК' },
         LAW_FULL: {
             UK: 'Уголовного кодекса', 
@@ -61,6 +60,8 @@
         },
         
         SERVER_ICONS: {
+            orlando: '<svg viewBox="0 0 18 18"><circle cx="13" cy="4.5" r="2" fill="currentColor"/><path d="M2 8c1-3 4-3 6-2 1-2 4-2 6 0-2-.4-4 0-5 1 2 0 3 2 3 4-1-1-2-2-3-2 .2 2 .1 4-.6 6H6c1-1.6 1.5-3.7 1.1-6C5.8 9 5 10 4 11c0-2 1-3 2.3-3.6C5 7 3 7 2 8ZM2 15h14v1.5H2z"/></svg>',
+            memphis: '<svg viewBox="0 0 18 18"><path d="M7 3.5 16 2v9.1c0 1.6-1.4 2.9-3.2 2.9-1.4 0-2.5-.8-2.5-2 0-1.5 1.5-2.6 3.2-2.6.3 0 .6 0 .8.1V5L8.5 6v7.4c0 1.7-1.4 3-3.2 3-1.4 0-2.5-.8-2.5-2 0-1.5 1.4-2.7 3.2-2.7.3 0 .6 0 1 .1z"/></svg>',
             empty: '<svg width="16" height="16" viewBox="0 0 18 18"><circle cx="9" cy="9" r="8" fill="#576069"/></svg>',
             'new-york': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M2.889.584c-.043.05-.108.223-.146.385-.041.178-.184.422-.365.621-.5.552-.526 1.044-.08 1.508.318.33.286.42-.15.42-.605 0-.648.05-.648.739 0 .648.058.738.474.738.156 0 .183.024.14.124-.172.394-.246.639-.247.826-.002.31.23.754.517.99.246.202.253.222.342 1.015.117 1.049.398 2.534.571 3.025.132.373.133.4.01.75-.175.496-.359 1.576-.357 2.094.004 1.298.599 2.406 1.582 2.945l.39.213-.05.64a7 7 0 0 1-.085.762c-.035.116.237.123 5.02.12l5.057-.002.859-1.199c.803-1.12.85-1.205.724-1.292-.074-.052-.687-.492-1.362-.978-1.403-1.01-1.221-.995-1.851-.155-.22.291-.416.53-.437.532-.022 0-.143-.202-.269-.451-.324-.639-1.07-1.386-1.666-1.671-.422-.202-.564-.23-1.351-.276-1.085-.061-1.637-.157-2.067-.358-.415-.194-1.025-.779-1.238-1.187-.26-.499-.569-.88-.9-1.11-.216-.151-.324-.285-.356-.441-.026-.124-.034-.237-.02-.251.016-.015.326.01.69.055.73.091.676.042.768.694.145 1.03 1.09 1.9 2.07 1.902 1.02.002 1.97-.96 2.076-2.105l.038-.409.95-.121c.524-.067.992-.154 1.042-.194.152-.12.109-.402-.072-.471-.09-.035-.62-.118-1.178-.186-.721-.088-1.037-.155-1.097-.233-.068-.09.019-.238.478-.816.749-.94.77-.982.583-1.163-.186-.18-.228-.16-1.195.564-.63.472-.745.533-.886.472-.177-.078-.178-.081-.346-1.317-.08-.583-.144-.834-.232-.897-.15-.11-.181-.11-.329 0-.085.063-.15.335-.234.967-.152 1.16-.153 1.162-.343 1.245-.145.063-.26.001-.954-.516-.79-.588-.953-.662-1.116-.503-.158.153-.09.295.494 1.04.59.751.621.81.515.973-.066.101-1.666.34-1.841.274-.16-.06-.484-2.422-.486-3.538 0-.354.002-.357.271-.422l.272-.065.021-.597c.026-.708-.027-.775-.614-.775-.326 0-.385-.02-.385-.13 0-.071.07-.19.156-.263s.219-.273.296-.441c.266-.577.002-1.223-.766-1.875C3.193.483 3.023.427 2.89.584"/></svg>',
             'detroit': '<svg width="16" height="16" viewBox="0 0 18 18"><path d="M12.75 8.5v-3L9 8.5v-3l-3.75 3V4H1.5v12h15V5.5zm-6 5.25h-1.5V11.5h1.5zm3.75 0H9V11.5h1.5zm3.75 0h-1.5V11.5h1.5z"/></svg>',
@@ -224,74 +225,17 @@
         },
         
         getServerIcon(serverId) {
-            if (!serverId) return CONSTANTS.SERVER_ICONS.empty;
-            
-            try {
-                let cleanId = serverId.toLowerCase().trim();
-                
-                const iconMap = {
-                    'new-york': 'new-york', 'newyork': 'new-york',
-                    'detroit': 'detroit',
-                    'chicago': 'chicago',
-                    'san-francisco': 'san-francisco', 'sanfrancisco': 'san-francisco',
-                    'atlanta': 'atlanta',
-                    'san-diego': 'san-diego', 'sandiego': 'san-diego',
-                    'los-angeles': 'los-angeles', 'losangeles': 'los-angeles',
-                    'miami': 'miami',
-                    'las-vegas': 'las-vegas', 'lasvegas': 'las-vegas',
-                    'washington': 'washington',
-                    'dallas': 'dallas',
-                    'boston': 'boston',
-                    'houston': 'houston',
-                    'seattle': 'seattle',
-                    'phoenix': 'phoenix',
-                    'denver': 'denver',
-                    'portland': 'portland'
-                };
-                
-                const baseMatch = cleanId.match(/^([a-z-]+?)(?:-\d+)?$/);
-                const baseName = baseMatch ? baseMatch[1] : cleanId.split('-')[0];
-                
-                for (const [key, value] of Object.entries(iconMap)) {
-                    if (baseName.includes(key) || key.includes(baseName)) {
-                        const icon = CONSTANTS.SERVER_ICONS[value];
-                        if (icon) {
-                            return icon.replace('<svg', `<svg class="${value}"`);
-                        }
-                    }
-                }
-                
-                return CONSTANTS.SERVER_ICONS.empty.replace('<svg', '<svg class="empty"');
-                
-            } catch (error) {
-                log.error('getServerIcon error:', error);
-                return CONSTANTS.SERVER_ICONS.empty;
-            }
+            const city = String(serverId || '').toLowerCase().replace(/-\d+$/, '');
+            const key = Object.hasOwn(CONSTANTS.SERVER_ICONS, city) ? city : 'empty';
+            return CONSTANTS.SERVER_ICONS[key].replace('<svg', '<svg aria-hidden="true" data-city="' + key + '"');
         },
-        
-        async copyToClipboard(text) {
-            try {
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    await navigator.clipboard.writeText(text);
-                    return true;
-                }
-                
-                const textarea = document.createElement('textarea');
-                textarea.value = text;
-                textarea.style.position = 'fixed';
-                textarea.style.opacity = '0';
-                document.body.appendChild(textarea);
-                textarea.select();
-                const success = document.execCommand('copy');
-                document.body.removeChild(textarea);
-                return success;
-                
-            } catch (error) {
-                log.error('copyToClipboard error:', error);
-                return false;
-            }
+
+        renderRange(slider, label, value) {
+            slider.value = value;
+            label.textContent = slider.value + '%';
+            slider.style.setProperty('--range-progress', (slider.value / slider.max) * 100 + '%');
         },
-        
+
         toggleTextExpand(e) {
             try {
                 e.stopPropagation();
@@ -388,41 +332,14 @@
             }
         },
         
-        clearAllCache: function() {
-            try {
-                if (isStorageAvailable) {
-                    localStorage.removeItem('offline_laws');
-                    localStorage.removeItem('offline_rules');
-                    localStorage.removeItem('offline_servers');
-                    localStorage.removeItem('selectedServer');
-                    localStorage.removeItem('searchQuery');
-                    localStorage.removeItem('activeTab');
-                    localStorage.removeItem('windowOpacity');
-                    localStorage.removeItem('autoHideEnabled');
-                    localStorage.removeItem('hotkey');
-                    localStorage.removeItem('theme');
-                    console.log('[Cache] All offline cache cleared');
-                }
-                
-                if (typeof offlineCache !== 'undefined') {
-                    offlineCache.laws = {};
-                    offlineCache.rules = {};
-                    offlineCache.servers = null;
-                }
-                
-                if (window.SearchState && SearchState.lawsCache) {
-                    SearchState.lawsCache.clear();
-                    console.log('[Cache] SearchState lawsCache cleared');
-                }
-                
-                return true;
-            } catch (e) {
-                console.error('[Cache] Failed to clear cache:', e);
-                return false;
-            }
+        clearAllCache() {
+            for (const key of ['offline_laws', 'offline_rules', 'offline_servers']) localStorage.removeItem(key);
+            offlineCache.laws = {};
+            offlineCache.rules = {};
+            offlineCache.servers = null;
+            return true;
         },
-        
-        // Плавное скрытие элемента
+
         fadeOut(element, duration = 300) {
             return new Promise((resolve) => {
                 if (!element) { resolve(); return; }
@@ -480,72 +397,27 @@
         }
     };
 
-    const Notification = {
-        element: null,
-        timeout: null,
-        
-        init() {
-            try {
-                this.element = document.getElementById('copy-notification');
-                if (!this.element) {
-                    this.element = document.createElement('div');
-                    this.element.id = 'copy-notification';
-                    this.element.className = 'copy-notification hidden';
-                    this.element.innerHTML = `
-                        <svg width="14" height="14" viewBox="0 0 16 16">
-                            <circle cx="8" cy="8" r="7" stroke="#4ade80" stroke-width="1.5" fill="none"/>
-                            <path d="M5 8L7 10L11 6" stroke="#4ade80" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-                        </svg>
-                        <span class="copy-message">Скопировано</span>
-                    `;
-                    document.body.appendChild(this.element);
-                }
-            } catch (error) {
-                log.error('Notification.init error:', error);
+    const AppToast = {
+        show(message, type = "success") {
+            if (!this.element) {
+                this.element = document.createElement('div');
+                this.element.className = 'app-toast';
+                this.element.setAttribute('role', 'status');
+                document.body.append(this.element);
             }
-        },
-        
-        show(message = 'Скопировано') {
-            try {
-                if (!this.element) this.init();
-                
-                if (this.timeout) {
-                    clearTimeout(this.timeout);
-                    this.timeout = null;
-                }
-                
-                const msgSpan = this.element.querySelector('.copy-message');
-                if (msgSpan) msgSpan.textContent = message;
-                
-                // Позиционирование только через CSS-классы, без inline style-конфликтов
-                this.element.classList.remove('hidden', 'fade-out', 'fade-in');
-                // Форсируем reflow чтобы transition сработал после снятия hidden
-                void this.element.offsetWidth;
-                this.element.classList.add('fade-in');
-                
-                this.timeout = setTimeout(() => {
-                    this.element.classList.remove('fade-in');
-                    this.element.classList.add('fade-out');
-                    setTimeout(() => {
-                        this.element.classList.add('hidden');
-                        this.element.classList.remove('fade-out');
-                    }, 300);
-                }, 2000);
-                
-            } catch (error) {
-                log.error('Notification.show error:', error);
-            }
+            clearTimeout(this.timer);
+            this.element.textContent = message;
+            this.element.dataset.type = type;
+            this.element.classList.add('is-visible');
+            this.timer = setTimeout(() => this.element.classList.remove('is-visible'), 2400);
         }
     };
 
-    document.addEventListener('DOMContentLoaded', () => {
-        Notification.init();
-        Utils.disableSelection();
-    });
+    document.addEventListener('DOMContentLoaded', () => Utils.disableSelection());
 
     window.CONSTANTS = CONSTANTS;
     window.Utils = Utils;
-    window.Notification = Notification;
+    window.AppToast = AppToast;
 
 })();
 
