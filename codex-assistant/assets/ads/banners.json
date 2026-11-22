@@ -1,6 +1,8 @@
 [
   {
-    "image": "majestic-banner.png",
-    "title": "Тестовый баннер Majestic RP"
+    "image": "majestic-promo.png",
+    "title": "Регистрация в Majestic RP",
+    "url": "https://id.majestic-rp.ru/",
+    "promoCode": "o-41295"
   }
 ]

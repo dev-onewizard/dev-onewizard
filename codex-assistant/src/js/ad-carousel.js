@@ -35,6 +35,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const url = typeof banner.url === 'string' && URL.parse(banner.url);
         if (url?.protocol === 'https:') slide.href = url.href;
         else slide.removeAttribute('href');
+        const hasPromo = Boolean(banner.promoCode && slide.hasAttribute('href'));
+        slide.classList.toggle('ad-promo', hasPromo);
+        if (hasPromo) {
+            slide.setAttribute('aria-label', `${image.alt}. Скопировать промокод ${banner.promoCode} и перейти по ссылке`);
+        } else {
+            slide.removeAttribute('aria-label');
+        }
         placeholder.hidden = true;
         slide.hidden = false;
         buttons.forEach((button, i) => button.setAttribute('aria-pressed', String(i === index)));
@@ -44,9 +51,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         slide.hidden = true;
         placeholder.hidden = false;
     });
-    slide.addEventListener('click', event => {
+    slide.addEventListener('click', async event => {
         event.preventDefault();
-        if (slide.hasAttribute('href')) window.CodexAPI.utils.openExternal(slide.href);
+        if (!slide.hasAttribute('href')) return;
+        const { href } = slide;
+        const { promoCode } = banners[currentIndex];
+        if (promoCode) {
+            let copied = false;
+            try {
+                copied = await window.CodexAPI.clipboard.copy(promoCode);
+            } catch (error) {
+                console.warn('[Banners] Could not copy promo code:', error);
+            }
+            if (copied) AppToast.show(`Промокод ${promoCode} скопирован`);
+            else AppToast.show('Не удалось скопировать промокод', 'error');
+        }
+        window.CodexAPI.utils.openExternal(href);
     });
 
     show(0);

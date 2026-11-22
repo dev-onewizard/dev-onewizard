@@ -405,6 +405,7 @@ kbd { font: 600 .85rem/1.4 Consolas, "Courier New", monospace; }
 .ad-slide { position: absolute; inset: 0; }
 .ad-slide:focus-visible { outline-offset: -3px; }
 .ad-slide img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ad-promo img { object-fit: contain; }
 .ad-pagination {
   position: absolute;
   right: 5px;

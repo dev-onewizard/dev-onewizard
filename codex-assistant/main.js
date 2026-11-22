@@ -1007,11 +1007,15 @@ function setupIPCHandlers() {
             typeof banner?.image === 'string' &&
             /^[a-z0-9][a-z0-9._-]*\.(?:jpe?g|png|webp|avif)$/i.test(banner.image) &&
             fs.existsSync(path.join(__dirname, 'assets', 'ads', banner.image))
-        ).map(({ image, title, url }) => ({
-            image,
-            title: typeof title === 'string' ? title.trim() : '',
-            url: typeof url === 'string' ? url : ''
-        }));
+        ).map(({ image, title, url, promoCode }) => {
+            const code = typeof promoCode === 'string' ? promoCode.trim() : '';
+            return {
+                image,
+                title: typeof title === 'string' ? title.trim() : '',
+                url: typeof url === 'string' ? url : '',
+                promoCode: code.length <= 500 ? code : ''
+            };
+        });
     });
     ipcMain.on('updates:install', (event) => {
         if (!downloadedVersion || updateStatus.state === 'installing' ||
