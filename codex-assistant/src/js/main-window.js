@@ -113,10 +113,10 @@ function setupProjectChooser() {
 function selectProject(id) {
     if (!Object.hasOwn(projects, id)) return;
     const project = projects[id];
-    const hint = document.getElementById('project-status');
-    hint.classList.toggle('hidden', project.available);
-    hint.textContent = project.available ? '' : project.name + ' — справочник появится позже. Горячая клавиша пока открывает поиск Majestic RP.';
-    if (!project.available) return;
+    if (!project.available) {
+        AppToast.show(project.name + ' — справочник появится позже. Горячая клавиша пока открывает поиск Majestic RP.', 'info');
+        return;
+    }
 
     document.documentElement.dataset.project = id;
 

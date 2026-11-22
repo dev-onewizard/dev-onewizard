@@ -987,6 +987,19 @@ function setupIPCHandlers() {
     ipcMain.handle('updates:check', () => checkAppUpdate());
     ipcMain.handle('updates:status', () => updateStatus);
     ipcMain.handle('updates:history', () => require('./releases.json').updates);
+    ipcMain.handle('ads:list', () => {
+        const banners = require('./assets/ads/banners.json');
+        if (!Array.isArray(banners)) return [];
+        return banners.filter(banner =>
+            typeof banner?.image === 'string' &&
+            /^[a-z0-9][a-z0-9._-]*\.(?:jpe?g|png|webp|avif)$/i.test(banner.image) &&
+            fs.existsSync(path.join(__dirname, 'assets', 'ads', banner.image))
+        ).map(({ image, title, url }) => ({
+            image,
+            title: typeof title === 'string' ? title.trim() : '',
+            url: typeof url === 'string' ? url : ''
+        }));
+    });
     ipcMain.on('updates:install', (event) => {
         if (!downloadedVersion || updateStatus.state === 'installing' ||
             event.sender !== mainWindow?.webContents) return;

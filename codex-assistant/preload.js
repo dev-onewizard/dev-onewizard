@@ -31,6 +31,7 @@ const api = {
         onClear: cb => subscribe('cache:cleared', cb),
     },
     clipboard: { copy: text => ipcRenderer.invoke('clipboard:copy', text) },
+    ads: { list: () => ipcRenderer.invoke('ads:list') },
     
     config: {
         getHotkey: () => ipcRenderer.invoke('cfg:getHotkey'),
