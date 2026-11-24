@@ -52,7 +52,7 @@
   </picture>
 </div>
 
-## Codex Assistant
+## Codex Hub
 
 Памятка для Majestic RP с поиском по законам 19 серверов и правилам проекта. [Сборки для Windows](https://github.com/dev-onewizard/dev-onewizard/releases)
 
