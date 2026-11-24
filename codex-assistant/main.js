@@ -1108,12 +1108,12 @@ function setupIPCHandlers() {
         }
     });
     
-    ipcMain.handle('get-app-info', () => ({
-        version: app.getVersion(),
-        name: 'Codex Assistant',
-        author: 'onewizard-dev',
-        platform: process.platform
-    }));
+ipcMain.handle('get-app-info', () => ({
+    version: app.getVersion(),
+    name: 'Codex Hub',
+    author: 'onewizard-dev',
+    platform: process.platform
+}));
     
     ipcMain.handle('project:get', () => activeProject);
     ipcMain.on('project:select', (event, project) => {
@@ -1212,7 +1212,7 @@ function setupIPCHandlers() {
 app.whenReady().then(async () => {
     console.log('[App] Ready, isDev:', isDev);
     if (process.platform === 'win32') {
-        app.setAppUserModelId('com.onewizard.codex-assistant');
+        app.setAppUserModelId('com.onewizard.codex-hub');
     }
     Menu.setApplicationMenu(null);
     

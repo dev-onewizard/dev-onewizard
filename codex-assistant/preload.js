@@ -1,7 +1,7 @@
 // preload.js
 const { contextBridge, ipcRenderer } = require('electron');
 
-console.log('[Preload] Loading Codex Assistant...');
+console.log('[Preload] Loading Codex Hub...');
 
 function subscribe(channel, callback) {
     const handler = (_, value) => callback(value);

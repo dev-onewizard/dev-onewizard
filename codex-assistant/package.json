@@ -1,8 +1,8 @@
 {
-  "name": "codex-assistant",
-  "productName": "Codex Assistant",
+  "name": "codex-hub",
+  "productName": "Codex Hub",
   "version": "1.2.10",
-  "description": "Codex Assistant — помощник по законам и правилам для MAJESTIC RP",
+  "description": "Codex Hub — помощник по законам и правилам для MAJESTIC RP",
   "author": {
     "name": "onewizard-dev",
     "url": "https://github.com/dev-onewizard"

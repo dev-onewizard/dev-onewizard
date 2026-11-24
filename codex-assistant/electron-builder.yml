@@ -1,5 +1,5 @@
-appId: com.onewizard.codex-assistant
-productName: Codex Assistant
+appId: com.onewizard.codex-hub
+productName: Codex Hub
 copyright: Copyright © 2026 onewizard-dev
 
 directories:
@@ -34,7 +34,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: Codex Assistant
+  shortcutName: Codex Hub
   deleteAppDataOnUninstall: false
   language: 1049
   license: LICENSE
@@ -43,10 +43,10 @@ nsis:
   uninstallerIcon: assets/Icon/windows.ico
   installerHeader: build/windows/header.bmp
   installerSidebar: build/windows/welcome.bmp
-  artifactName: Codex-Assistant-Setup-${version}.${ext}
+  artifactName: Codex-Hub-Setup-${version}.${ext}
 
 portable:
-  artifactName: Codex-Assistant-${version}-portable.exe
+  artifactName: Codex-Hub-${version}-portable.exe
   requestExecutionLevel: user
 
 publish:

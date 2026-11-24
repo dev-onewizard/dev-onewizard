@@ -1,8 +1,172 @@
+/* Unbounded local */
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-cyrillic-ext-300-normal.woff2") format("woff2");
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-cyrillic-300-normal.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-latin-ext-300-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-latin-300-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-cyrillic-ext-400-normal.woff2") format("woff2");
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-cyrillic-400-normal.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-cyrillic-ext-500-normal.woff2") format("woff2");
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-cyrillic-500-normal.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-latin-ext-500-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-latin-500-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-cyrillic-ext-600-normal.woff2") format("woff2");
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-cyrillic-600-normal.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-latin-ext-600-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-latin-600-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-cyrillic-ext-700-normal.woff2") format("woff2");
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-cyrillic-700-normal.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-latin-ext-700-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Unbounded";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../../assets/fonts/unbounded-latin-700-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   color-scheme: dark;
-  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
+  font-family: "Unbounded", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  letter-spacing: -0.01em;
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
   --canvas: #141516;
   --surface: #1d1e20;
   --raised: #282a2d;
@@ -114,7 +278,8 @@ img, .ad-slide { -webkit-user-drag: none; }
 
 .startup-screen { flex: 1; display: grid; place-items: center; padding: 0 18px 56px; }
 .startup-content { display: grid; justify-items: center; gap: 10px; text-align: center; }
-.startup-content .brand-mark { width: 55px; height: 55px; }
+.startup-content .brand-mark,
+.startup-content .brand-logo-startup { width: 320px; height: auto; max-height: 112px; object-fit: contain; }
 .startup-content h1 { font-size: 26px; font-weight: 700; letter-spacing: -.03em; }
 .startup-content p { display: flex; align-items: center; gap: 8px; color: var(--muted); }
 .startup-spinner {
@@ -130,7 +295,10 @@ img, .ad-slide { -webkit-user-drag: none; }
 
 .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 700; letter-spacing: -.025em; white-space: nowrap; }
 .brand-mark { width: 29px; height: 29px; object-fit: contain; }
-:root[data-theme="light"] .brand-mark { filter: brightness(.24); }
+.brand-logo { width: auto; height: 34px; max-width: 200px; object-fit: contain; }
+.titlebar .brand-logo { height: 34px; }
+.search-titlebar .brand-logo { height: 28px; }
+:root[data-theme="light"] .brand-mark:not(.brand-logo):not(.brand-logo-startup) { filter: brightness(.24); }
 
 .segmented {
   display: flex;
@@ -222,7 +390,7 @@ img, .ad-slide { -webkit-user-drag: none; }
   text-align: center;
   transition: transform var(--fast) var(--ease);
 }
-.project-card strong { color: var(--ink); font-size: .94rem; line-height: 1.2; font-weight: 650; }
+.project-card strong { color: var(--ink); font-size: .94rem; line-height: 1.2; font-weight: 600; }
 .project-card:active { transform: scale(.98); }
 .project-art {
   position: relative;
@@ -253,7 +421,7 @@ img, .ad-slide { -webkit-user-drag: none; }
   border-radius: 6px;
   white-space: nowrap;
   font-size: .75rem;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.4;
 }
 .project-controls {
@@ -335,7 +503,7 @@ img, .ad-slide { -webkit-user-drag: none; }
 .titlebar [data-tooltip]::after, .clear-search[data-tooltip]::after { top: calc(100% + 6px); bottom: auto; transform: translateY(-3px); }
 
 .field { min-width: 0; }
-.field > label { display: block; color: var(--muted); margin-bottom: 5px; font-size: .79rem; font-weight: 650; }
+.field > label { display: block; color: var(--muted); margin-bottom: 5px; font-size: .79rem; font-weight: 600; }
 .picker { position: relative; min-width: 0; }
 .picker-button, .hotkey-editor, .button {
   min-height: 34px;
@@ -587,6 +755,7 @@ input[type="range"]::-webkit-slider-thumb {
 .overlay { opacity: var(--overlay-opacity, 1); transition: opacity 105ms ease-out; }
 .overlay[data-overlay-hidden] { opacity: 0; }
 .search-titlebar .brand-mark { width: 24px; height: 24px; font-size: 17px; }
+.search-titlebar .brand-logo { width: auto; height: 28px; }
 .search-view { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 8px 16px 0; }
 .search-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: stretch; }
 .search-field { position: relative; display: flex; align-items: center; }
@@ -630,7 +799,7 @@ input[type="range"]::-webkit-slider-thumb {
 .search-server .dropdown { right: 0; max-height: min(272px, 65vh); }
 #subcategory-selector { max-width: min(240px, 65vw); }
 .results-heading { display: flex; align-items: baseline; justify-content: space-between; flex: none; gap: 8px; margin: 0 0 6px; }
-.results-heading h1 { font-size: .83rem; font-weight: 650; color: var(--muted); }
+.results-heading h1 { font-size: .83rem; font-weight: 600; color: var(--muted); }
 #result-count { color: var(--muted); font: 600 .79rem/1.4 Consolas, "Courier New", monospace; }
 .results-container { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .results-list { display: grid; gap: 7px; padding: 0 4px 9px; }
@@ -647,7 +816,7 @@ input[type="range"]::-webkit-slider-thumb {
 .code-badge { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; padding: 4px 7px; border: 0; border-radius: 6px; background: var(--accent-tint); color: var(--accent-text); font: 700 .78rem/1.35 Consolas, "Courier New", monospace; transition: color var(--fast), background-color var(--fast); }
 .code-badge:hover, .code-badge.copied { background: var(--solid-accent); color: #fff; }
 .copy-icon { width: 13px; height: 13px; fill: currentColor; }
-.result-title { margin: 0; font-weight: 650; user-select: text; }
+.result-title { margin: 0; font-weight: 600; user-select: text; }
 .result-text { margin-top: 5px; color: var(--muted); white-space: pre-wrap; user-select: text; }
 .note-text { margin-top: 8px; font-size: .78rem; font-weight: 700; color: var(--muted); }
 .search-highlight { background: var(--accent-tint); color: var(--accent-text); border-radius: 2px; }
@@ -657,7 +826,7 @@ input[type="range"]::-webkit-slider-thumb {
 .result-details summary { width: max-content; max-width: 100%; cursor: pointer; color: var(--accent-text); font-size: .84rem; }
 .loading-message, .empty-state, .error-message { display: grid; place-content: center; justify-items: center; gap: 6px; min-height: 130px; padding: 12px; color: var(--muted); text-align: center; }
 .error-message { color: var(--danger); }
-.empty-state-title { color: var(--ink); font-weight: 650; }
+.empty-state-title { color: var(--ink); font-weight: 600; }
 .infinite-scroll-trigger { min-height: 3px; }
 .search-footer {
   display: flex;

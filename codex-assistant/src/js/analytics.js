@@ -9,7 +9,7 @@ const MEASUREMENT_ID = process.env.CODEX_GA_MEASUREMENT_ID;
 const API_SECRET = process.env.CODEX_GA_API_SECRET;
 
 const APP_VERSION = app.getVersion();
-const APP_NAME = 'Codex Assistant';
+const APP_NAME = 'Codex Hub';
 
 let sessionStartTime = null;
 

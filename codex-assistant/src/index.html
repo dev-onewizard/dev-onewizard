@@ -4,13 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
-  <title>Codex Assistant</title>
+  <title>Codex Hub</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
   <div class="app-frame">
     <header class="titlebar">
-      <div class="brand"><img class="brand-mark" src="../assets/Icon/icon.png" alt=""><span>Codex Assistant</span></div>
+      <div class="brand"><img class="brand-mark brand-logo" src="../assets/Icon/codexhub.svg" alt="Codex Hub"></div>
       <nav class="segmented main-tabs" aria-label="Разделы">
         <button id="tab-main" class="active" type="button" aria-pressed="true">Проекты</button>
         <button id="tab-settings" type="button" aria-pressed="false">Настройки</button>
@@ -21,13 +21,12 @@
       </div>
     </header>
 
-    <section id="startup-screen" class="startup-screen" aria-label="Запуск">
-      <div class="startup-content">
-        <img src="../assets/Icon/icon.png" class="brand-mark" alt="">
-        <h1>Codex Assistant</h1>
-        <p role="status"><span class="startup-spinner" aria-hidden="true"></span> Проверяем обновления…</p>
-      </div>
-    </section>
+<section id="startup-screen" class="startup-screen" aria-label="Запуск">
+  <div class="startup-content">
+    <img src="../assets/Icon/codexhub.svg" class="brand-mark brand-logo-startup" alt="Codex Hub">
+    <p role="status"><span class="startup-spinner" aria-hidden="true"></span> Проверяем обновления…</p>
+  </div>
+</section>
     <main id="main-content" class="home-view hidden">
       <section class="project-overview" aria-labelledby="home-title">
         <h1 id="home-title">Проекты</h1>
