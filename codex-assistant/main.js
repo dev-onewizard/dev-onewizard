@@ -1212,7 +1212,7 @@ ipcMain.handle('get-app-info', () => ({
 app.whenReady().then(async () => {
     console.log('[App] Ready, isDev:', isDev);
     if (process.platform === 'win32') {
-        app.setAppUserModelId('com.onewizard.codex-hub');
+        app.setAppUserModelId('com.onewizard.codex-assistant');
     }
     Menu.setApplicationMenu(null);
     
